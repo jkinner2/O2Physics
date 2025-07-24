@@ -51,6 +51,7 @@ struct SginclusivePhiKstarSD {
 
   HistogramRegistry registry{"registry", {}, OutputObjHandlingPolicy::AnalysisObject, true, true};
 
+  Configurable<int> cutRCTflag{"cutRCTflag", 0, {"0 = off, 1 = CBT, 2 = CBT+ZDC, 3 = CBThadron, 4 = CBThadron+ZDC"}};
   Configurable<float> fv0Cut{"fv0Cut", 50., "FV0A threshold"};
   Configurable<float> ft0aCut{"ft0aCut", 100., "FT0A threshold"};
   Configurable<float> ft0cCut{"ft0cCut", 50., "FT0C threshold"};
@@ -59,6 +60,16 @@ struct SginclusivePhiKstarSD {
   Configurable<float> zdcCut{"zdcCut", 0., "ZDC threshold"};
   Configurable<float> vzCut{"vzCut", 10., "Vz position"};
   Configurable<float> occCut{"occCut", 1000., "Occupancy cut"};
+  Configurable<float> hadronicRate{"hadronicRate", 1000., "hadronicRate cut"};
+  Configurable<int> useTrs{"useTrs", -1, "kNoCollInTimeRangeStandard cut"};
+  Configurable<int> useTrofs{"useTrofs", -1, "kNoCollInRofStandard cut"};
+  Configurable<int> useHmpr{"useHmpr", -1, "kNoHighMultCollInPrevRof cut"};
+  Configurable<int> useTfb{"useTfb", -1, "kNoTimeFrameBorder cut"};
+  Configurable<int> useItsrofb{"useItsrofb", -1, "kNoITSROFrameBorder cut"};
+  Configurable<int> useSbp{"useSbp", -1, "kNoSameBunchPileup cut"};
+  Configurable<int> useZvtxftovpv{"useZvtxftovpv", -1, "kIsGoodZvtxFT0vsPV cut"};
+  Configurable<int> useVtxItsTpc{"useVtxItsTpc", -1, "kIsVertexITSTPC cut"};
+  Configurable<int> upcflag{"upcflag", -1, "upc run selection, 0 = std, 1= upc"};
 
   // Track Selections
   Configurable<float> pvCut{"pvCut", 1.0, "Use Only PV tracks"};
@@ -80,7 +91,6 @@ struct SginclusivePhiKstarSD {
   Configurable<float> nsigmaTpcCut1{"nsigmaTpcCut1", 3.0, "nsigma tpc cut1"};
   Configurable<float> nsigmaTpcCut2{"nsigmaTpcCut2", 3.0, "nsigma tpc cut2"};
   Configurable<float> nsigmaTpcCut3{"nsigmaTpcCut3", 3.0, "nsigma tpc cut3"};
-  Configurable<float> nsigmaTpcCut4{"nsigmaTpcCut4", 3.0, "nsigma tpc cut4"};
   Configurable<float> nsigmaTpcCut{"nsigmaTpcCut", 3.0, "nsigma tpc cut"};
   Configurable<float> nsigmaTofCut{"nsigmaTofCut", 9.0, "nsigma tpc+tof cut"};
   Configurable<float> nsigmaTofCut1{"nsigmaTofCut1", 3.0, "nsigma tof cut"};
@@ -111,8 +121,24 @@ struct SginclusivePhiKstarSD {
   Configurable<bool> reconstruction{"reconstruction", true, ""};
   Configurable<int> generatedId{"generatedId", 31, ""};
 
+  // Configurable axes for histogram
+  ConfigurableAxis dcaAxisConfig{"dcaAxisConfig", {600, -0.3f, 0.3f}, "DCAxy & DCAz axis"};
+  ConfigurableAxis etaAxisConfig{"etaAxisConfig", {400, -1.0f, 1.0f}, "Pseudorapidity & Rapidity axis"};
+  ConfigurableAxis VrtxXAxisConfig{"VrtxXAxisConfig", {400, -0.1f, 0.1f}, "Vertex X axis"};
+  ConfigurableAxis VrtxYAxisConfig{"VrtxYAxisConfig", {200, -0.05f, 0.05f}, "Vertex Y axis"};
+  ConfigurableAxis VrtxZAxisConfig{"VrtxZAxisConfig", {600, -15.0f, 15.0f}, "Vertex Z axis"};
+
   void init(InitContext const& context)
   {
+    // Axes
+    AxisSpec dcaxyAxis = {dcaAxisConfig, "DCAxy (cm)"};
+    AxisSpec dcazAxis = {dcaAxisConfig, "DCAz (cm)"};
+    AxisSpec etaAxis = {etaAxisConfig, "#eta"};
+    AxisSpec rapAxis = {etaAxisConfig, "y"};
+    AxisSpec VrtxXAxis = {VrtxXAxisConfig, "Vertex X (cm)"};
+    AxisSpec VrtxYAxis = {VrtxYAxisConfig, "Vertex Y (cm)"};
+    AxisSpec VrtxZAxis = {VrtxZAxisConfig, "Vertex Z (cm)"};
+
     registry.add("GapSide", "Gap Side; Entries", kTH1F, {{4, -1.5, 2.5}});
     registry.add("TrueGapSide", "Gap Side; Entries", kTH1F, {{4, -1.5, 2.5}});
     registry.add("nPVContributors_data", "Multiplicity_dist_before track cut gap A", kTH1F, {{110, 0, 110}});
@@ -121,56 +147,56 @@ struct SginclusivePhiKstarSD {
     if (phi) {
       registry.add("os_KK_pT_0", "pt kaon pair", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_KK_pT_1", "pt kaon pair", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_KK_pT_2", "pt kaon pair", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_KK_pT_2", "pt kaon pair", kTH3F, {{305, 0.98, 2.2}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_KK_ls_pT_0", "kaon pair like sign", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_KK_ls_pT_1", "kaon pair like sign", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_KK_ls_pT_2", "kaon pair like sign", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_KK_ls_pT_2", "kaon pair like sign", kTH3F, {{305, 0.98, 2.2}, {80, -2.0, 2.0}, {100, 0, 10}});
 
       registry.add("os_KK_mix_pT_0", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_KK_mix_pT_1", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_KK_mix_pT_2", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_KK_mix_pT_2", "kaon pair mix event", kTH3F, {{305, 0.98, 2.2}, {80, -2.0, 2.0}, {100, 0, 10}});
 
       registry.add("os_KK_rot_pT_0", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_KK_rot_pT_1", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_KK_rot_pT_2", "kaon pair mix event", kTH3F, {{220, 0.98, 1.2}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_KK_rot_pT_2", "kaon pair mix event", kTH3F, {{305, 0.98, 2.2}, {80, -2.0, 2.0}, {100, 0, 10}});
     }
     if (rho) {
-      registry.add("os_pp_pT_0", "pt pion pair", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pp_pT_1", "pt pion pair", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pp_pT_2", "pt pion pair", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pp_ls_pT_0", "pion pair like sign", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pp_ls_pT_1", "pion pair like sign", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pp_ls_pT_2", "pion pair like sign", kTH3F, {{120, 1.44, 2.04}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_pT_0", "pt pion pair", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_pT_1", "pt pion pair", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_pT_2", "pt pion pair", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_ls_pT_0", "pion pair like sign", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_ls_pT_1", "pion pair like sign", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pp_ls_pT_2", "pion pair like sign", kTH3F, {{200, 1.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
     }
     if (kstar) {
       registry.add("os_pk_pT_0", "pion-kaon pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_pk_pT_1", "pion-kaon pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pk_pT_2", "pion-kaon pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pk_pT_2", "pion-kaon pair", kTH3F, {{600, 0.0, 3.0}, {80, -2.0, 2.0}, {1000, 0, 10}});
 
       registry.add("os_pk_mix_pT_0", "pion-kaon mix pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_pk_mix_pT_1", "pion-kaon mix pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pk_mix_pT_2", "pion-kaon mix pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pk_mix_pT_2", "pion-kaon mix pair", kTH3F, {{600, 0.0, 3.0}, {80, -2.0, 2.0}, {1000, 0, 10}});
 
       registry.add("os_pk_rot_pT_0", "pion-kaon rotional pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_pk_rot_pT_1", "pion-kaon rotional pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pk_rot_pT_2", "pion-kaon rotional pair", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pk_rot_pT_2", "pion-kaon rotional pair", kTH3F, {{600, 0.0, 3.0}, {80, -2.0, 2.0}, {1000, 0, 10}});
 
       registry.add("os_pk_ls_pT_0", "pion-kaon pair like sign", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
       registry.add("os_pk_ls_pT_1", "pion-kaon like sign", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
-      registry.add("os_pk_ls_pT_2", "pion-kaon like sign", kTH3F, {{400, 0.0, 2.0}, {80, -2.0, 2.0}, {100, 0, 10}});
+      registry.add("os_pk_ls_pT_2", "pion-kaon like sign", kTH3F, {{600, 0.0, 3.0}, {80, -2.0, 2.0}, {1000, 0, 10}});
 
       registry.add("hRotation", "hRotation", kTH1F, {{360, 0.0, o2::constants::math::TwoPI}});
     }
     // qa plots
     if (qa) {
-      registry.add("tpc_dedx", "p vs dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 2500.0}});
-      registry.add("tof_beta", "p vs beta", kTH2F, {{100, 0.0, 10.0}, {100, 0.0, 5.0}});
+      registry.add("tpc_dedx", "p vs dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
+      registry.add("tof_beta", "p vs beta", kTH2F, {{500, 0.0, 10.0}, {500, 0.0, 1.0}});
 
-      registry.add("tpc_dedx_kaon", "p#k dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 2500.0}});
-      registry.add("tpc_dedx_pion", "p#pi dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 2500.0}});
-      registry.add("tpc_dedx_kaon_1", "tpc+tof pid cut p#k dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 2500.0}});
-      registry.add("tpc_dedx_kaon_2", "tpc+tof pid cut1 p#k dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 2500.0}});
-      registry.add("tpc_dedx_pion_1", "tpc+tof pid cut p#pi dE/dx", kTH2F, {{100, 0.0, 10.0}, {10000, 0.0, 25000.0}});
+      registry.add("tpc_dedx_kaon", "p#k dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
+      registry.add("tpc_dedx_pion", "p#pi dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
+      registry.add("tpc_dedx_kaon_1", "tpc+tof pid cut p#k dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
+      registry.add("tpc_dedx_kaon_2", "tpc+tof pid cut1 p#k dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
+      registry.add("tpc_dedx_pion_1", "tpc+tof pid cut p#pi dE/dx", kTH2F, {{500, 0.0, 10.0}, {5000, 0.0, 5000.0}});
       registry.add("tpc_nsigma_kaon", "p#k n#sigma", kTH2F, {{100, 0.0, 10.0}, {100, -10.0, 10.0}});
       registry.add("tpc_nsigma_pion", "p#pi n#sigma", kTH2F, {{100, 0.0, 10.0}, {100, -10.0, 10.0}});
       registry.add("tpc_tof_nsigma_kaon", "p#k n#sigma TPC vs TOF", kTH2F, {{100, -10.0, 10.0}, {100, -10.0, 10.0}});
@@ -198,6 +224,31 @@ struct SginclusivePhiKstarSD {
       registry.add("V0A", "V0A amplitude", kTH1F, {{1000, 0.0, 1000.0}});
       registry.add("V0A_0", "V0A amplitude", kTH1F, {{1000, 0.0, 1000.0}});
       registry.add("V0A_1", "V0A amplitude", kTH1F, {{1000, 0.0, 1000.0}});
+
+      registry.add("hDcaxy_all_before", "DCAxy Distribution of all tracks before track selection; DCAxy (cm); Counts", kTH1F, {dcaxyAxis});
+      registry.add("hDcaz_all_before", "DCAz Distribution of all tracks before track selection; DCAz (cm); Counts", kTH1F, {dcazAxis});
+
+      registry.add("hDcaxy_all_after", "DCAxy Distribution of all tracks after track selection; DCAxy (cm); Counts", kTH1F, {dcaxyAxis});
+      registry.add("hDcaz_all_after", "DCAz Distribution of all tracks after track selection; DCAz (cm); Counts", kTH1F, {dcazAxis});
+
+      registry.add("hDcaxy_pi", "DCAxy Distribution of selected pions; DCAxy (cm); Counts", kTH1F, {dcaxyAxis});
+      registry.add("hDcaz_pi", "DCAz Distribution of selected pions; DCAz (cm); Counts", kTH1F, {dcazAxis});
+
+      registry.add("hDcaxy_ka", "DCAxy Distribution of selected kaons; DCAxy (cm); Counts", kTH1F, {dcaxyAxis});
+      registry.add("hDcaz_ka", "DCAz Distribution of selected kaons; DCAz (cm); Counts", kTH1F, {dcazAxis});
+
+      registry.add("hVertexX", "Vertex X distribution; Vertex X (cm); Counts", kTH1F, {VrtxXAxis});
+      registry.add("hVertexY", "Vertex Y distribution; Vertex Y (cm); Counts", kTH1F, {VrtxYAxis});
+      registry.add("hVertexZ", "VertexZ distribution; Vertex Z (cm); Counts", kTH1F, {VrtxZAxis});
+
+      registry.add("hEta_all_after", "Pseudorapidity of all tracks after track selection; #eta; Counts", kTH1F, {etaAxis});
+      registry.add("hRap_all_after", "Rapidity of all tracks after track selection; y; Counts", kTH1F, {rapAxis});
+
+      registry.add("hEta_pi", "Pseudorapidity of selected Pions; #eta; Counts", kTH1F, {etaAxis});
+      registry.add("hRap_pi", "Rapidity of selected Pions; y; Counts", kTH1F, {rapAxis});
+
+      registry.add("hEta_ka", "Pseudorapidity of selected Kaons; #eta; Counts", kTH1F, {etaAxis});
+      registry.add("hRap_ka", "Rapidity of selected Kaons; y; Counts", kTH1F, {rapAxis});
 
       if (rapidityGap) {
         registry.add("mult_0", "mult0", kTH1F, {{150, 0, 150}});
@@ -395,9 +446,9 @@ struct SginclusivePhiKstarSD {
   }
 
   //_____________________________________________________________________________
-  double cosThetaCollinsSoperFrame(TLorentzVector pair1,
-                                   TLorentzVector pair2,
-                                   TLorentzVector fourpion)
+  double cosThetaCollinsSoperFrame(ROOT::Math::PxPyPzMVector pair1,
+                                   ROOT::Math::PxPyPzMVector pair2,
+                                   ROOT::Math::PxPyPzMVector fourpion)
   {
     double halfSqrtSnn = 2680.;
     double massOfLead208 = 193.6823;
@@ -421,6 +472,23 @@ struct SginclusivePhiKstarSD {
 
     double cosThetaCs = zaxisCs.Dot((v1Cm));
     return cosThetaCs;
+  }
+
+  template <typename C>
+  bool isGoodRCTflag(C const& coll)
+  {
+    switch (cutRCTflag) {
+      case 1:
+        return sgSelector.isCBTOk(coll);
+      case 2:
+        return sgSelector.isCBTZdcOk(coll);
+      case 3:
+        return sgSelector.isCBTHadronOk(coll);
+      case 4:
+        return sgSelector.isCBTHadronZdcOk(coll);
+      default:
+        return true;
+    }
   }
 
   template <typename T>
@@ -483,7 +551,7 @@ struct SginclusivePhiKstarSD {
   }
 
   //------------------------------------------------------------------------------------------------------
-  double phiCollinsSoperFrame(TLorentzVector pair1, TLorentzVector pair2, TLorentzVector fourpion)
+  double phiCollinsSoperFrame(ROOT::Math::PxPyPzMVector pair1, ROOT::Math::PxPyPzMVector pair2, ROOT::Math::PxPyPzMVector fourpion)
   {
     // Half of the energy per pair of the colliding nucleons.
     double halfSqrtSnn = 2680.;
@@ -518,24 +586,24 @@ struct SginclusivePhiKstarSD {
 
   void process(UDCollisionFull const& collision, UDtracksfull const& tracks)
   {
-    TLorentzVector v0;
-    TLorentzVector v1;
-    TLorentzVector v01;
+    ROOT::Math::PxPyPzMVector v0;
+    ROOT::Math::PxPyPzMVector v1;
+    ROOT::Math::PxPyPzMVector v01;
     int gapSide = collision.gapSide();
     float fitCut[5] = {fv0Cut, ft0aCut, ft0cCut, fddaCut, fddcCut};
     std::vector<float> parameters = {pvCut, dcazCut, dcaxyCut, tpcChi2Cut, tpcNClsFindableCut, itsChi2Cut, etaCut, ptCut};
     int truegapSide = sgSelector.trueGap(collision, fitCut[0], fitCut[1], fitCut[2], zdcCut);
 
-    TLorentzVector phiv;
-    TLorentzVector phiv1;
+    ROOT::Math::PxPyPzMVector phiv;
+    ROOT::Math::PxPyPzMVector phiv1;
 
-    std::vector<TLorentzVector> onlyPionTracksp;
+    std::vector<ROOT::Math::PxPyPzMVector> onlyPionTracksp;
     std::vector<decltype(tracks.begin())> rawPionTracksp;
 
-    std::vector<TLorentzVector> onlyPionTrackspm;
+    std::vector<ROOT::Math::PxPyPzMVector> onlyPionTrackspm;
     std::vector<decltype(tracks.begin())> rawPionTrackspm;
 
-    std::vector<TLorentzVector> onlyPionTracksn;
+    std::vector<ROOT::Math::PxPyPzMVector> onlyPionTracksn;
     std::vector<decltype(tracks.begin())> rawPionTracksn;
 
     registry.fill(HIST("GapSide"), gapSide);
@@ -547,7 +615,29 @@ struct SginclusivePhiKstarSD {
       return;
     if (std::abs(collision.occupancyInTime()) > occCut)
       return;
+    if (std::abs(collision.hadronicRate()) > hadronicRate)
+      return;
 
+    if (useTrs != -1 && collision.trs() != useTrs)
+      return;
+    if (useTrofs != -1 && collision.trofs() != useTrofs)
+      return;
+    if (useHmpr != -1 && collision.hmpr() != useHmpr)
+      return;
+    if (useTfb != -1 && collision.tfb() != useTfb)
+      return;
+    if (useItsrofb != -1 && collision.itsROFb() != useItsrofb)
+      return;
+    if (useSbp != -1 && collision.sbp() != useSbp)
+      return;
+    if (useZvtxftovpv != -1 && collision.zVtxFT0vPV() != useZvtxftovpv)
+      return;
+    if (useVtxItsTpc != -1 && collision.vtxITSTPC() != useVtxItsTpc)
+      return;
+    if (!isGoodRCTflag(collision))
+      return;
+    if (upcflag != -1 && collision.flags() != upcflag)
+      return;
     int mult = collision.numContrib();
     if (gapSide == 0) {
       registry.fill(HIST("gap_mult0"), mult);
@@ -569,18 +659,40 @@ struct SginclusivePhiKstarSD {
     int trackextra = 0;
     int trackextraDG = 0;
 
-    Partition<UDtracksfull> pvContributors1 = aod::udtrack::isPVContributor == true;
-    pvContributors1.bindTable(tracks);
-    if (gapSide == 0) {
-      registry.get<TH1>(HIST("nPVContributors_data"))->Fill(pvContributors1.size(), 1.);
+    if (qa) {
+      registry.fill(HIST("hVertexX"), collision.posX());
+      registry.fill(HIST("hVertexY"), collision.posY());
+      registry.fill(HIST("hVertexZ"), collision.posZ());
     }
-    if (gapSide == 1) {
-      registry.get<TH1>(HIST("nPVContributors_data_1"))->Fill(pvContributors1.size(), 1.);
-    }
+
+    /*   Partition<UDtracksfull> pvContributors1 = aod::udtrack::isPVContributor == true;
+   pvContributors1.bindTable(tracks);
+   if (gapSide == 0) {
+   registry.get<TH1>(HIST("nPVContributors_data"))->Fill(pvContributors1.size(), 1.);
+   }
+   if (gapSide == 1) {
+   registry.get<TH1>(HIST("nPVContributors_data_1"))->Fill(pvContributors1.size(), 1.);
+   }
+    */
     for (const auto& track1 : tracks) {
+
+      if (qa) {
+        registry.fill(HIST("hDcaxy_all_before"), track1.dcaXY());
+        registry.fill(HIST("hDcaz_all_before"), track1.dcaZ());
+      }
+
       if (!trackselector(track1, parameters))
         continue;
-      v0.SetXYZM(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassPionCharged);
+
+      v0.SetCoordinates(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassPionCharged);
+
+      if (qa) {
+        registry.fill(HIST("hDcaxy_all_after"), track1.dcaXY());
+        registry.fill(HIST("hDcaz_all_after"), track1.dcaZ());
+        registry.fill(HIST("hEta_all_after"), v0.Eta());
+        registry.fill(HIST("hRap_all_after"), v0.Rapidity());
+      }
+
       if (selectionPIDPion1(track1)) {
         onlyPionTrackspm.push_back(v0);
         rawPionTrackspm.push_back(track1);
@@ -631,6 +743,10 @@ struct SginclusivePhiKstarSD {
           registry.fill(HIST("tpc_nsigma_kaon"), v0.Pt(), track1.tpcNSigmaKa());
           registry.fill(HIST("tof_nsigma_kaon"), v0.Pt(), track1.tofNSigmaKa());
           registry.fill(HIST("tpc_tof_nsigma_kaon"), track1.tpcNSigmaKa(), track1.tofNSigmaKa());
+          registry.fill(HIST("hEta_ka"), v0.Eta());
+          registry.fill(HIST("hRap_ka"), v0.Rapidity());
+          registry.fill(HIST("hDcaxy_ka"), track1.dcaXY());
+          registry.fill(HIST("hDcaz_ka"), track1.dcaZ());
         }
 
         if (selectionPIDPion1(track1)) {
@@ -638,6 +754,10 @@ struct SginclusivePhiKstarSD {
           registry.fill(HIST("tpc_nsigma_pion"), v0.Pt(), track1.tpcNSigmaPi());
           registry.fill(HIST("tof_nsigma_pion"), v0.Pt(), track1.tofNSigmaPi());
           registry.fill(HIST("tpc_tof_nsigma_pion"), track1.tpcNSigmaPi(), track1.tofNSigmaPi());
+          registry.fill(HIST("hEta_pi"), v0.Eta());
+          registry.fill(HIST("hRap_pi"), v0.Rapidity());
+          registry.fill(HIST("hDcaxy_pi"), track1.dcaXY());
+          registry.fill(HIST("hDcaz_pi"), track1.dcaZ());
         }
       }
     }
@@ -719,8 +839,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (phi && selectionPIDKaon1(t0) && selectionPIDKaon1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -754,8 +874,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (kstar && selectionPIDKaon1(t0) && selectionPIDPion1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -790,8 +910,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (phi && selectionPIDKaon1(t0) && selectionPIDKaon1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -825,8 +945,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (kstar && selectionPIDKaon1(t0) && selectionPIDPion1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -860,8 +980,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (phi && selectionPIDKaon1(t0) && selectionPIDKaon1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -895,8 +1015,8 @@ struct SginclusivePhiKstarSD {
             continue;
           if (kstar && selectionPIDKaon1(t0) && selectionPIDPion1(t1)) {
             // Apply kaon hypothesis and create pairs
-            v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+            v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
             v01 = v0 + v1;
             // Opposite sign pairs
             if (t0.sign() != t1.sign()) {
@@ -932,8 +1052,8 @@ struct SginclusivePhiKstarSD {
 
       if (phi && selectionPIDKaon1(t0) && selectionPIDKaon1(t1)) {
         // Apply kaon hypothesis and create pairs
-        v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-        v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
+        v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+        v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
         v01 = v0 + v1;
         // Opposite sign pairs
         if (t0.sign() != t1.sign()) {
@@ -971,8 +1091,8 @@ struct SginclusivePhiKstarSD {
             auto rotkaonPx = t0.px() * std::cos(rotangle) - t0.py() * std::sin(rotangle);
             auto rotkaonPy = t0.px() * std::sin(rotangle) + t0.py() * std::cos(rotangle);
 
-            v0.SetXYZM(rotkaonPx, rotkaonPy, t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
+            v0.SetCoordinates(rotkaonPx, rotkaonPy, t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassKaonCharged);
             v01 = v0 + v1;
             if (t0.sign() != t1.sign()) {
               if (gapSide == 0) {
@@ -995,8 +1115,8 @@ struct SginclusivePhiKstarSD {
       if (t0.globalIndex() == t1.globalIndex())
         continue;
       if (rho && selectionPIDProton(t0, useTof, nsigmaTpcCut, nsigmaTofCut) && selectionPIDPion1(t1)) {
-        v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassProton);
-        v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+        v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassProton);
+        v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
         v01 = v0 + v1;
         // Opposite sign pairs
         if (t0.sign() != t1.sign()) {
@@ -1025,8 +1145,8 @@ struct SginclusivePhiKstarSD {
       if (kstar && selectionPIDKaon1(t0) && selectionPIDPion1(t1)) {
         if (kaoncut && t0.tpcNSigmaPi() < pionNsigmaCut)
           continue;
-        v0.SetXYZM(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
-        v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+        v0.SetCoordinates(t0.px(), t0.py(), t0.pz(), o2::constants::physics::MassKaonCharged);
+        v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
         v01 = v0 + v1;
         // Opposite sign pairs
         if (t0.sign() != t1.sign()) {
@@ -1062,8 +1182,8 @@ struct SginclusivePhiKstarSD {
             auto rotkaonPx = t0.px() * std::cos(rotangle) - t0.py() * std::sin(rotangle);
             auto rotkaonPy = t0.px() * std::sin(rotangle) + t0.py() * std::cos(rotangle);
 
-            v0.SetXYZM(rotkaonPx, rotkaonPy, t0.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
+            v0.SetCoordinates(rotkaonPx, rotkaonPy, t0.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(t1.px(), t1.py(), t1.pz(), o2::constants::physics::MassPionCharged);
             v01 = v0 + v1;
             if (t0.sign() != t1.sign()) {
               if (gapSide == 0) {
@@ -1082,12 +1202,12 @@ struct SginclusivePhiKstarSD {
     }
     if (fourpion) {
       if (gapSide == 2 && mult2 == 4) {
-        TLorentzVector pair1, pair2, pair3, pair4;
+        ROOT::Math::PxPyPzMVector pair1, pair2, pair3, pair4;
         if (onlyPionTracksp.size() == 2 && onlyPionTracksn.size() == 2) {
-          TLorentzVector k1 = onlyPionTracksp.at(0);
-          TLorentzVector k2 = onlyPionTracksp.at(1);
-          TLorentzVector k3 = onlyPionTracksn.at(0);
-          TLorentzVector k4 = onlyPionTracksn.at(1);
+          ROOT::Math::PxPyPzMVector k1 = onlyPionTracksp.at(0);
+          ROOT::Math::PxPyPzMVector k2 = onlyPionTracksp.at(1);
+          ROOT::Math::PxPyPzMVector k3 = onlyPionTracksn.at(0);
+          ROOT::Math::PxPyPzMVector k4 = onlyPionTracksn.at(1);
           phiv = k1 + k2 + k3 + k4;
           pair1 = k1 + k3;
           pair2 = k2 + k4;
@@ -1112,10 +1232,10 @@ struct SginclusivePhiKstarSD {
         if (onlyPionTracksp.size() != 2 && onlyPionTracksn.size() != 2) {
           if (onlyPionTracksp.size() + onlyPionTracksn.size() != 4)
             return;
-          TLorentzVector l1 = onlyPionTrackspm.at(0);
-          TLorentzVector l2 = onlyPionTrackspm.at(1);
-          TLorentzVector l3 = onlyPionTrackspm.at(2);
-          TLorentzVector l4 = onlyPionTrackspm.at(3);
+          ROOT::Math::PxPyPzMVector l1 = onlyPionTrackspm.at(0);
+          ROOT::Math::PxPyPzMVector l2 = onlyPionTrackspm.at(1);
+          ROOT::Math::PxPyPzMVector l3 = onlyPionTrackspm.at(2);
+          ROOT::Math::PxPyPzMVector l4 = onlyPionTrackspm.at(3);
           phiv1 = l1 + l2 + l3 + l4;
           registry.fill(HIST("os_pppp_pT_2_ls"), phiv1.M(), phiv1.Pt(), phiv1.Rapidity());
         }
@@ -1134,9 +1254,9 @@ struct SginclusivePhiKstarSD {
   using BinningTypeVertexContributor = ColumnBinningPolicy<aod::collision::PosZ, aod::collision::NumContrib>;
   void mixprocess(UDCollisionsFull1 const& collisions, UDtracksfull const& /*track*/)
   {
-    TLorentzVector v0;
-    TLorentzVector v1;
-    TLorentzVector v01;
+    ROOT::Math::PxPyPzMVector v0;
+    ROOT::Math::PxPyPzMVector v1;
+    ROOT::Math::PxPyPzMVector v01;
     float fitCut[5] = {fv0Cut, ft0aCut, ft0cCut, fddaCut, fddcCut};
     std::vector<float> parameters = {pvCut, dcazCut, dcaxyCut, tpcChi2Cut, tpcNClsFindableCut, itsChi2Cut, etaCut, ptCut};
     BinningTypeVertexContributor binningOnPositions{{axisVertex, axisMultiplicityClass}, true};
@@ -1158,8 +1278,8 @@ struct SginclusivePhiKstarSD {
         if (!trackselector(track1, parameters) || !trackselector(track2, parameters))
           continue;
         if (phi && selectionPIDKaon1(track1) && selectionPIDKaon1(track2)) {
-          v0.SetXYZM(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassKaonCharged);
-          v1.SetXYZM(track2.px(), track2.py(), track2.pz(), o2::constants::physics::MassKaonCharged);
+          v0.SetCoordinates(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassKaonCharged);
+          v1.SetCoordinates(track2.px(), track2.py(), track2.pz(), o2::constants::physics::MassKaonCharged);
           v01 = v0 + v1;
           // Opposite sign pairs
           if (track1.sign() != track2.sign()) {
@@ -1181,8 +1301,8 @@ struct SginclusivePhiKstarSD {
         if (track1.globalIndex() == track2.globalIndex())
           continue;
         if (kstar && selectionPIDKaon1(track1) && selectionPIDPion1(track2)) {
-          v0.SetXYZM(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassKaonCharged);
-          v1.SetXYZM(track2.px(), track2.py(), track2.pz(), o2::constants::physics::MassPionCharged);
+          v0.SetCoordinates(track1.px(), track1.py(), track1.pz(), o2::constants::physics::MassKaonCharged);
+          v1.SetCoordinates(track2.px(), track2.py(), track2.pz(), o2::constants::physics::MassPionCharged);
           v01 = v0 + v1;
           // Opposite sign pairs
           if (track1.sign() != track2.sign()) {
@@ -1216,11 +1336,11 @@ struct SginclusivePhiKstarSD {
   void processMCTruth(aod::UDMcCollisions const& mccollisions, CCs const& collisions, aod::UDMcParticles const& McParts, TCs const& tracks)
   {
     // number of McCollisions in DF
-    TLorentzVector v0;
-    TLorentzVector v1;
-    TLorentzVector v01;
-    TLorentzVector vkstar;
-    TLorentzVector vphi;
+    ROOT::Math::PxPyPzMVector v0;
+    ROOT::Math::PxPyPzMVector v1;
+    ROOT::Math::PxPyPzMVector v01;
+    ROOT::Math::PxPyPzMVector vkstar;
+    ROOT::Math::PxPyPzMVector vphi;
     for (const auto& mccollision : mccollisions) {
       if (mccollision.generatorsID() != generatedId)
         continue;
@@ -1236,11 +1356,11 @@ struct SginclusivePhiKstarSD {
       for (const auto& [tr1, tr2] : combinations(partSlice, partSlice)) {
         if ((tr1.pdgCode() == kKPlus && tr2.pdgCode() == kPiMinus) || (tr1.pdgCode() == kKMinus && tr2.pdgCode() == kPiPlus) || (tr1.pdgCode() == kPiPlus && tr2.pdgCode() == kKMinus) || (tr1.pdgCode() == kPiMinus && tr2.pdgCode() == kKPlus)) {
           if (std::abs(tr1.pdgCode()) == kKPlus) {
-            v0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
-            v1.SetXYZM(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassPionCharged);
+            v0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
+            v1.SetCoordinates(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassPionCharged);
           } else {
-            v0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
-            v1.SetXYZM(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
+            v0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
+            v1.SetCoordinates(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
           }
           if (!tr1.isPhysicalPrimary() || !tr2.isPhysicalPrimary())
             continue;
@@ -1255,7 +1375,7 @@ struct SginclusivePhiKstarSD {
           if (tr1.has_mothers() && tr2.has_mothers()) {
             for (const auto& mother : tr1.mothers_as<aod::UDMcParticles>()) {
               if (std::abs(mother.pdgCode()) == o2::constants::physics::Pdg::kK0Star892) {
-                vkstar.SetXYZM(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassK0Star892);
+                vkstar.SetCoordinates(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassK0Star892);
                 registry.get<TH3>(HIST("MC/accMPtRap_kstar_G"))->Fill(vkstar.M(), vkstar.Pt(), vkstar.Rapidity(), 1.);
                 flag = true;
               }
@@ -1279,8 +1399,8 @@ struct SginclusivePhiKstarSD {
 
         if (std::abs(tr1.pdgCode()) != kKPlus || std::abs(tr2.pdgCode()) != kKPlus)
           continue;
-        v0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
-        v1.SetXYZM(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
+        v0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
+        v1.SetCoordinates(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
         if (tr1.pdgCode() == tr2.pdgCode())
           continue;
         v01 = v0 + v1;
@@ -1296,7 +1416,7 @@ struct SginclusivePhiKstarSD {
         if (tr1.has_mothers() && tr2.has_mothers()) {
           for (const auto& mother : tr1.mothers_as<aod::UDMcParticles>()) {
             if (std::abs(mother.pdgCode()) == o2::constants::physics::Pdg::kPhi) {
-              vphi.SetXYZM(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassPhi);
+              vphi.SetCoordinates(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassPhi);
               registry.get<TH3>(HIST("MC/accMPtRap_phi_G"))->Fill(vphi.M(), vphi.Pt(), vphi.Rapidity(), 1.);
               flag = true;
             }
@@ -1349,25 +1469,48 @@ struct SginclusivePhiKstarSD {
     std::vector<float> parameters = {pvCut, dcazCut, dcaxyCut, tpcChi2Cut, tpcNClsFindableCut, itsChi2Cut, etaCut, ptCut};
     int truegapSide = sgSelector.trueGap(collision, fitCut[0], fitCut[1], fitCut[2], zdcCut);
     registry.get<TH1>(HIST("Reco/Stat"))->Fill(4.0, 1.);
-    Partition<TCs> pvContributors = aod::udtrack::isPVContributor == true;
-    pvContributors.bindTable(tracks);
+    //    Partition<TCs> pvContributors = aod::udtrack::isPVContributor == true;
+    // pvContributors.bindTable(tracks);
     if (std::abs(collision.posZ()) > vzCut)
       return;
     if (std::abs(collision.occupancyInTime()) > occCut)
       return;
+    if (std::abs(collision.hadronicRate()) > hadronicRate)
+      return;
+    if (useTrs != -1 && collision.trs() != useTrs)
+      return;
+    if (useTrofs != -1 && collision.trofs() != useTrofs)
+      return;
+    if (useHmpr != -1 && collision.hmpr() != useHmpr)
+      return;
+    if (useTfb != -1 && collision.tfb() != useTfb)
+      return;
+    if (useItsrofb != -1 && collision.itsROFb() != useItsrofb)
+      return;
+    if (useSbp != -1 && collision.sbp() != useSbp)
+      return;
+    if (useZvtxftovpv != -1 && collision.zVtxFT0vPV() != useZvtxftovpv)
+      return;
+    if (useVtxItsTpc != -1 && collision.vtxITSTPC() != useVtxItsTpc)
+      return;
+    if (!isGoodRCTflag(collision))
+      return;
+    if (upcflag != -1 && collision.flags() != upcflag)
+      return;
+
     registry.get<TH1>(HIST("Reco/Stat"))->Fill(truegapSide, 1.);
     if (truegapSide != gapsideMC)
       return;
-    registry.get<TH1>(HIST("Reco/nPVContributors"))->Fill(pvContributors.size(), 1.);
-    TLorentzVector vphi;
-    TLorentzVector vkstar;
-    TLorentzVector v0;
-    TLorentzVector vr0;
-    TLorentzVector vr1;
-    TLorentzVector vr01;
-    TLorentzVector vr0g;
-    TLorentzVector vr1g;
-    TLorentzVector vr01g;
+    // registry.get<TH1>(HIST("Reco/nPVContributors"))->Fill(pvContributors.size(), 1.);
+    ROOT::Math::PxPyPzMVector vphi;
+    ROOT::Math::PxPyPzMVector vkstar;
+    ROOT::Math::PxPyPzMVector v0;
+    ROOT::Math::PxPyPzMVector vr0;
+    ROOT::Math::PxPyPzMVector vr1;
+    ROOT::Math::PxPyPzMVector vr01;
+    ROOT::Math::PxPyPzMVector vr0g;
+    ROOT::Math::PxPyPzMVector vr1g;
+    ROOT::Math::PxPyPzMVector vr01g;
     int t1 = 0;
     if (truegapSide == 0) {
       registry.fill(HIST("V0A_0_mc"), collision.totalFV0AmplitudeA());
@@ -1401,7 +1544,7 @@ struct SginclusivePhiKstarSD {
       registry.get<TH1>(HIST("Reco/tr_chi2ncl_2"))->Fill(tr1.tpcChi2NCl(), 1.);
       registry.get<TH1>(HIST("Reco/tr_tpcnclfind_2"))->Fill(tr1.tpcNClsFindable(), 1.);
       registry.get<TH1>(HIST("Reco/tr_itsChi2NCl_2"))->Fill(tr1.itsChi2NCl(), 1.);
-      v0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
+      v0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
 
       registry.fill(HIST("tpc_dedx_mc"), v0.P(), tr1.tpcSignal());
       registry.fill(HIST("tof_beta_mc"), v0.P(), tr1.beta());
@@ -1421,7 +1564,7 @@ struct SginclusivePhiKstarSD {
       }
 
       t1++;
-      vr0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
+      vr0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassKaonCharged);
       registry.get<TH1>(HIST("Reco/trpt"))->Fill(vr0.Pt(), 1.);
       registry.get<TH1>(HIST("Reco/treta_k"))->Fill(vr0.Eta(), 1.);
       if (!selectionPIDKaon1(tr1))
@@ -1437,7 +1580,7 @@ struct SginclusivePhiKstarSD {
         if (t2 > t1) {
           if (!selectionPIDKaon1(tr2))
             continue;
-          vr1.SetXYZM(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
+          vr1.SetCoordinates(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
           auto mcPart2 = tr2.udMcParticle();
           if (std::abs(mcPart2.globalIndex() - mcPart1.globalIndex()) != 1)
             continue;
@@ -1452,7 +1595,7 @@ struct SginclusivePhiKstarSD {
           if (mcPart1.has_mothers() && mcPart2.has_mothers()) {
             for (const auto& mother : mcPart1.mothers_as<aod::UDMcParticles>()) {
               if (std::abs(mother.pdgCode()) == o2::constants::physics::Pdg::kPhi) {
-                vphi.SetXYZM(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassPhi);
+                vphi.SetCoordinates(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassPhi);
                 registry.get<TH3>(HIST("MC/accMPtRap_phi_T"))->Fill(vphi.M(), vphi.Pt(), vphi.Rapidity(), 1.);
                 flag = true;
               }
@@ -1463,8 +1606,8 @@ struct SginclusivePhiKstarSD {
               }
             }
           }
-          vr0g.SetXYZM(mcPart1.px(), mcPart1.py(), mcPart1.pz(), o2::constants::physics::MassKaonCharged);
-          vr1g.SetXYZM(mcPart2.px(), mcPart2.py(), mcPart2.pz(), o2::constants::physics::MassKaonCharged);
+          vr0g.SetCoordinates(mcPart1.px(), mcPart1.py(), mcPart1.pz(), o2::constants::physics::MassKaonCharged);
+          vr1g.SetCoordinates(mcPart2.px(), mcPart2.py(), mcPart2.pz(), o2::constants::physics::MassKaonCharged);
           vr01g = vr0g + vr1g;
           vr01 = vr0 + vr1;
 
@@ -1499,10 +1642,10 @@ struct SginclusivePhiKstarSD {
       if (tr1.sign() * tr2.sign() > 0)
         continue;
 
-      vr0.SetXYZM(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
-      vr1.SetXYZM(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
-      vr0g.SetXYZM(mcPart1.px(), mcPart1.py(), mcPart1.pz(), o2::constants::physics::MassPionCharged);
-      vr1g.SetXYZM(mcPart2.px(), mcPart2.py(), mcPart2.pz(), o2::constants::physics::MassKaonCharged);
+      vr0.SetCoordinates(tr1.px(), tr1.py(), tr1.pz(), o2::constants::physics::MassPionCharged);
+      vr1.SetCoordinates(tr2.px(), tr2.py(), tr2.pz(), o2::constants::physics::MassKaonCharged);
+      vr0g.SetCoordinates(mcPart1.px(), mcPart1.py(), mcPart1.pz(), o2::constants::physics::MassPionCharged);
+      vr1g.SetCoordinates(mcPart2.px(), mcPart2.py(), mcPart2.pz(), o2::constants::physics::MassKaonCharged);
       vr01g = vr0g + vr1g;
       vr01 = vr0 + vr1;
       if (!trackselector(tr1, parameters) || !trackselector(tr2, parameters)) {
@@ -1514,7 +1657,7 @@ struct SginclusivePhiKstarSD {
         if (mcPart1.has_mothers() && mcPart2.has_mothers()) {
           for (const auto& mother : mcPart1.mothers_as<aod::UDMcParticles>()) {
             if (std::abs(mother.pdgCode()) == o2::constants::physics::Pdg::kK0Star892) {
-              vkstar.SetXYZM(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassK0Star892);
+              vkstar.SetCoordinates(mother.px(), mother.py(), mother.pz(), o2::constants::physics::MassK0Star892);
               registry.get<TH3>(HIST("MC/accMPtRap_kstar_T"))->Fill(vkstar.M(), vkstar.Pt(), vkstar.Rapidity(), 1.);
               flag = true;
             }

@@ -18,13 +18,24 @@
 /// \author Fabio Catalano <fabio.catalano@cern.ch>, University of Houston
 /// \author Ruiqi Yin <ruiqi.yin@cern.ch>, Fudan University
 
-#include "Framework/AnalysisTask.h"
-#include "Framework/runDataProcessing.h"
-
-#include "Common/Core/RecoDecay.h"
-
 #include "PWGHF/DataModel/CandidateReconstructionTables.h"
 #include "PWGHF/DataModel/CandidateSelectionTables.h"
+
+#include "Common/Core/RecoDecay.h"
+#include "Common/DataModel/EventSelection.h"
+#include "Common/DataModel/TrackSelectionTables.h"
+
+#include <Framework/ASoA.h>
+#include <Framework/AnalysisDataModel.h>
+#include <Framework/AnalysisHelpers.h>
+#include <Framework/AnalysisTask.h>
+#include <Framework/Configurable.h>
+#include <Framework/InitContext.h>
+#include <Framework/runDataProcessing.h>
+
+#include <Rtypes.h>
+
+#include <cstdint>
 
 using namespace o2;
 using namespace o2::framework;
@@ -90,7 +101,7 @@ DECLARE_SOA_COLUMN(IsPionGlbTrkWoDca, isPionGlbTrkWoDca, bool);
 DECLARE_SOA_COLUMN(PionItsNCls, pionItsNCls, uint8_t);
 // from creator - MC
 DECLARE_SOA_COLUMN(FlagMcMatchRec, flagMcMatchRec, int8_t); // reconstruction level
-DECLARE_SOA_COLUMN(OriginRec, originRec, int8_t);
+DECLARE_SOA_COLUMN(OriginMcRec, originMcRec, int8_t);
 DECLARE_SOA_COLUMN(CollisionMatched, collisionMatched, bool);
 // from selector
 DECLARE_SOA_COLUMN(PidTpcInfoStored, pidTpcInfoStored, int);
@@ -152,7 +163,6 @@ DECLARE_SOA_COLUMN(OmegacChi2OverNdf, omegacChi2OverNdf, float);
 DECLARE_SOA_COLUMN(MassV0Chi2OverNdf, massV0Chi2OverNdf, float);
 DECLARE_SOA_COLUMN(MassCascChi2OverNdf, massCascChi2OverNdf, float);
 DECLARE_SOA_COLUMN(CascRejectInvmass, cascRejectInvmass, float);
-DECLARE_SOA_COLUMN(OutputMlOmegac, outputMlOmegac, float);
 } // namespace full
 
 DECLARE_SOA_TABLE(HfToOmegaPiEvs, "AOD", "HFTOOMEPIEV",
@@ -180,7 +190,7 @@ DECLARE_SOA_TABLE(HfOmegac0ToOmegaPiLites, "AOD", "HFTOOMEPILITE",
                   full::PidTpcInfoStored, full::PidTofInfoStored,
                   full::TpcNSigmaPiFromCharmBaryon, full::TpcNSigmaKaFromCasc, full::TpcNSigmaPiFromLambda, full::TpcNSigmaPrFromLambda,
                   full::TofNSigmaPiFromCharmBaryon, full::TofNSigmaKaFromCasc, full::TofNSigmaPiFromLambda, full::TofNSigmaPrFromLambda,
-                  full::FlagMcMatchRec, full::OriginRec, full::CollisionMatched, hf_track_index::HFflag);
+                  full::FlagMcMatchRec, full::OriginMcRec, full::CollisionMatched, hf_track_index::HFflag);
 
 DECLARE_SOA_TABLE(HfKfOmegacFulls, "AOD", "HFKFOMEGACFULL",
                   full::NSigmaTPCPiFromOmegac, full::NSigmaTOFPiFromOmegac, full::NSigmaTPCKaFromCasc, full::NSigmaTOFKaFromCasc,
@@ -200,8 +210,8 @@ DECLARE_SOA_TABLE(HfKfOmegacFulls, "AOD", "HFKFOMEGACFULL",
                   full::V0Ndf, full::CascNdf, full::OmegacNdf,
                   full::MassV0Ndf, full::MassCascNdf,
                   full::V0Chi2OverNdf, full::CascChi2OverNdf, full::OmegacChi2OverNdf,
-                  full::MassV0Chi2OverNdf, full::MassCascChi2OverNdf, full::CascRejectInvmass, full::OutputMlOmegac,
-                  full::FlagMcMatchRec, full::OriginRec, full::CollisionMatched, hf_track_index::HFflag);
+                  full::MassV0Chi2OverNdf, full::MassCascChi2OverNdf, full::CascRejectInvmass,
+                  full::FlagMcMatchRec, full::OriginMcRec, full::CollisionMatched, hf_track_index::HFflag);
 
 DECLARE_SOA_TABLE(HfKfOmegacLites, "AOD", "HFKFOMEGACLITE",
                   full::NSigmaTPCPiFromOmegac, full::NSigmaTOFPiFromOmegac, full::NSigmaTPCKaFromCasc, full::NSigmaTOFKaFromCasc,
@@ -215,10 +225,7 @@ DECLARE_SOA_TABLE(HfKfOmegacLites, "AOD", "HFKFOMEGACLITE",
                   full::CosThetaStarPiFromOmegac, full::CtOmegac, full::EtaOmegac,
                   full::V0Chi2OverNdf, full::CascChi2OverNdf, full::OmegacChi2OverNdf,
                   full::CascRejectInvmass,
-                  full::FlagMcMatchRec, full::OriginRec, full::CollisionMatched, hf_track_index::HFflag);
-
-DECLARE_SOA_TABLE(HfKfOmegacMl, "AOD", "HFKFOMEGACML",
-                  full::InvMassCharmBaryon, full::KfptOmegac, full::KfptPiFromOmegac, full::OutputMlOmegac, full::FlagMcMatchRec, full::OriginRec, full::CollisionMatched, hf_track_index::HFflag);
+                  full::FlagMcMatchRec, full::OriginMcRec, full::CollisionMatched, hf_track_index::HFflag);
 } // namespace o2::aod
 
 /// Writes the full information in an output TTree
@@ -227,7 +234,6 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
   Produces<o2::aod::HfOmegac0ToOmegaPiLites> rowCandidateLite;
   Produces<o2::aod::HfKfOmegacFulls> rowKfCandidateFull;
   Produces<o2::aod::HfKfOmegacLites> rowKfCandidateLite;
-  Produces<o2::aod::HfKfOmegacMl> rowKfCandidateMl;
   Produces<o2::aod::HfToOmegaPiEvs> rowEv;
 
   Configurable<float> zPvCut{"zPvCut", 10., "Cut on absolute value of primary vertex z coordinate"};
@@ -387,7 +393,6 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
         candidate.massV0Chi2OverNdf(),
         candidate.massCascChi2OverNdf(),
         candidate.cascRejectInvmass(),
-        candidate.mlValueOmegac(),
         flagMc,
         originMc,
         collisionMatched,
@@ -438,23 +443,6 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
     }
   } // fillKfCandidateLite end
 
-  template <typename T>
-  void fillKfCandidateMl(const T& candidate, int8_t flagMc, int8_t originMc, bool collisionMatched)
-  {
-    if (candidate.resultSelections() && candidate.statusPidCharmBaryon() && candidate.statusInvMassLambda() && candidate.statusInvMassCascade() && candidate.statusInvMassCharmBaryon()) {
-
-      rowKfCandidateMl(
-        candidate.invMassCharmBaryon(),
-        candidate.kfptOmegac(),
-        candidate.kfptPiFromOmegac(),
-        candidate.mlValueOmegac(),
-        flagMc,
-        originMc,
-        collisionMatched,
-        candidate.hfflag());
-    }
-  } // fillCandidateMl end
-
   void processDataLite(Colls const& collisions, Tracks const&,
                        soa::Filtered<soa::Join<aod::HfCandToOmegaPi, aod::HfSelToOmegaPi>> const& candidates)
   {
@@ -504,22 +492,6 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
   }
   PROCESS_SWITCH(HfTreeCreatorOmegac0ToOmegaPi, processKfDataLite, "Process KF data Lite", false);
 
-  void processKfCandidateMl(Colls const& collisions, Tracks const&, CandKfSel const& candidates)
-  {
-    // Filling event properties
-    rowEv.reserve(collisions.size());
-    for (const auto& collision : collisions) {
-      fillEvent(collision, zPvCut);
-    }
-
-    // Filling candidate properties
-    rowKfCandidateFull.reserve(candidates.size());
-    for (const auto& candidate : candidates) {
-      fillKfCandidateMl(candidate, -7, RecoDecay::OriginType::None, false);
-    }
-  }
-  PROCESS_SWITCH(HfTreeCreatorOmegac0ToOmegaPi, processKfCandidateMl, "Process KF data ML", true);
-
   void processMcLite(Colls const& collisions, Tracks const&,
                      soa::Filtered<soa::Join<aod::HfCandToOmegaPi, aod::HfSelToOmegaPi, aod::HfToOmegaPiMCRec>> const& candidates)
   {
@@ -532,7 +504,7 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
     // Filling candidate properties
     rowCandidateLite.reserve(candidates.size());
     for (const auto& candidate : candidates) {
-      fillCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originRec(), candidate.collisionMatched());
+      fillCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originMcRec(), candidate.collisionMatched());
     }
   }
   PROCESS_SWITCH(HfTreeCreatorOmegac0ToOmegaPi, processMcLite, "Process MC", false);
@@ -549,11 +521,11 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
     rowCandidateLite.reserve(candidates.size());
     for (const auto& candidate : candidates) {
       if (keepOnlyMcSignal) {
-        if (candidate.originRec() != 0) {
-          fillKfCandidate(candidate, candidate.flagMcMatchRec(), candidate.originRec(), candidate.collisionMatched());
+        if (candidate.originMcRec() != 0) {
+          fillKfCandidate(candidate, candidate.flagMcMatchRec(), candidate.originMcRec(), candidate.collisionMatched());
         }
       } else {
-        fillKfCandidate(candidate, candidate.flagMcMatchRec(), candidate.originRec(), candidate.collisionMatched());
+        fillKfCandidate(candidate, candidate.flagMcMatchRec(), candidate.originMcRec(), candidate.collisionMatched());
       }
     }
   }
@@ -571,11 +543,11 @@ struct HfTreeCreatorOmegac0ToOmegaPi {
     rowCandidateLite.reserve(candidates.size());
     for (const auto& candidate : candidates) {
       if (keepOnlyMcSignal) {
-        if (candidate.originRec() != 0) {
-          fillKfCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originRec(), candidate.collisionMatched());
+        if (candidate.originMcRec() != 0) {
+          fillKfCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originMcRec(), candidate.collisionMatched());
         }
       } else {
-        fillKfCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originRec(), candidate.collisionMatched());
+        fillKfCandidateLite(candidate, candidate.flagMcMatchRec(), candidate.originMcRec(), candidate.collisionMatched());
       }
     }
   }

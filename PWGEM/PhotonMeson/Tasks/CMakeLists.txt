@@ -24,8 +24,8 @@ o2physics_add_dpl_workflow(emc-pi0-qc
                     PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2::EMCALCalib O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(emc-bc-wise-pi0
-                    SOURCES emcalBcWisePi0.cxx
+o2physics_add_dpl_workflow(emc-bc-wise-gammagamma
+                    SOURCES emcalBcWiseGammaGamma.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2::EMCALCalib O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
@@ -61,6 +61,11 @@ o2physics_add_dpl_workflow(emcal-qc
 
 o2physics_add_dpl_workflow(heavy-neutral-meson
                     SOURCES HeavyNeutralMeson.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2::EMCALCalib O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(omega-meson-emc
+                    SOURCES OmegaMesonEMC.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2::EMCALCalib O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
                     COMPONENT_NAME Analysis)
 
@@ -146,6 +151,16 @@ o2physics_add_dpl_workflow(tagging-pi0-pcmdalitzee
 
 o2physics_add_dpl_workflow(tagging-pi0-mc-pcmdalitzee
                     SOURCES TaggingPi0MCPCMDalitzEE.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(diphoton-hadron-mpc-pcmpcm
+                    SOURCES diphotonHadronMPCPCMPCM.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(diphoton-hadron-mpc-pcmdalitzee
+                    SOURCES diphotonHadronMPCPCMDalitzEE.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
                     COMPONENT_NAME Analysis)
 

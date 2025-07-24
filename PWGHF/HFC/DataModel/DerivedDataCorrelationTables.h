@@ -16,12 +16,13 @@
 #ifndef PWGHF_HFC_DATAMODEL_DERIVEDDATACORRELATIONTABLES_H_
 #define PWGHF_HFC_DATAMODEL_DERIVEDDATACORRELATIONTABLES_H_
 
-#include "Framework/AnalysisDataModel.h"
+#include <Framework/ASoA.h>
 
 namespace o2::aod
 {
 namespace hf_collisions_reduced
 {
+DECLARE_SOA_COLUMN(NumPvContrib, numPvContrib, int);   //! Event multiplicity from PV contributors
 DECLARE_SOA_COLUMN(Multiplicity, multiplicity, float); //! Event multiplicity
 DECLARE_SOA_COLUMN(PosZ, posZ, float);                 //! Primary vertex z position
 
@@ -30,6 +31,7 @@ DECLARE_SOA_COLUMN(PosZ, posZ, float);                 //! Primary vertex z posi
 DECLARE_SOA_TABLE(HfcRedCollisions, "AOD", "HFCREDCOLLISION", //! Table with collision info
                   soa::Index<>,
                   aod::hf_collisions_reduced::Multiplicity,
+                  aod::hf_collisions_reduced::NumPvContrib,
                   aod::hf_collisions_reduced::PosZ);
 
 using HfcRedCollision = HfcRedCollisions::iterator;
