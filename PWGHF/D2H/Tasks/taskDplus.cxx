@@ -317,7 +317,7 @@ struct HfTaskDplus {
           } else if (!storeCentrality && storeOccupancy) {
             registry.fill(HIST("hSparseMassFD"), hfHelper.invMassDplusToPiKPi(candidate), candidate.pt(), outputMl[0], outputMl[1], outputMl[2], occupancy, ptbhad, flagBHad);
           } else if (!storeCentrality && !storeOccupancy && storePvContributors) {
-            registry.fill(HIST("hSparseMassFD"), hfHelper.invMassDplusToPiKPi(candidate), candidate.pt(), outputMl[0], outputMl[1], outputMl[2], numPvContributors);
+            registry.fill(HIST("hSparseMassFD"), hfHelper.invMassDplusToPiKPi(candidate), candidate.pt(), outputMl[0], outputMl[1], outputMl[2], numPvContributors, ptbhad, flagBHad);
           } else {
             registry.fill(HIST("hSparseMassFD"), hfHelper.invMassDplusToPiKPi(candidate), candidate.pt(), outputMl[0], outputMl[1], outputMl[2], ptbhad, flagBHad);
           }
@@ -506,7 +506,7 @@ struct HfTaskDplus {
             cent = getCentralityColl(collision, centEstimator);
           }
           if (storeOccupancy && occEstimator != OccupancyEstimator::None) {
-            occ = getOccupancyColl(collision, occEstimator);
+            occ = o2::hf_occupancy::getOccupancyColl(collision, occEstimator);
           }
           if (storePvContributors) {
             numPvContr = collision.numContrib();
@@ -556,20 +556,18 @@ struct HfTaskDplus {
         }
         ptBhad = candidate.ptBhadMotherPart();
         flagBHad = getBHadMotherFlag(candidate.pdgBhadMotherPart());
-
+        auto collision = candidate.template collision_as<McRecoCollisionsCent>();
         if (storeCentrality || storeOccupancy) {
-          auto collision = candidate.template collision_as<McRecoCollisionsCent>();
           if (storeCentrality && centEstimator != CentralityEstimator::None) {
             cent = getCentralityColl(collision, centEstimator);
           }
           if (storeOccupancy && occEstimator != OccupancyEstimator::None) {
-            occ = getOccupancyColl(collision, occEstimator);
+            occ = o2::hf_occupancy::getOccupancyColl(collision, occEstimator);
           }
+        }
           if (storePvContributors) {
             numPvContr = collision.numContrib();
           }
-        }
-
         fillHisto(candidate);
         fillHistoMCRec<true>(candidate);
         fillSparseML<true, true>(candidate, ptBhad, flagBHad, cent, occ, numPvContr);
@@ -587,7 +585,7 @@ struct HfTaskDplus {
             cent = getCentralityColl(collision, centEstimator);
           }
           if (storeOccupancy && occEstimator != OccupancyEstimator::None) {
-            occ = getOccupancyColl(collision, occEstimator);
+            occ = o2::hf_occupancy::getOccupancyColl(collision, occEstimator);
           }
           if (storePvContributors) {
             numPvContr = collision.numContrib();
@@ -622,7 +620,7 @@ struct HfTaskDplus {
         cent = getCentralityGenColl(recoCollsPerGenMcColl, centEstimator);
       }
       if (storeOccupancy && occEstimator != OccupancyEstimator::None) {
-        occ = getOccupancyGenColl(recoCollsPerGenMcColl, occEstimator);
+        occ = o2::hf_occupancy::getOccupancyGenColl(recoCollsPerGenMcColl, occEstimator);
       }
 
       for (const auto& particle : mcParticlesPerGenMcColl) {
@@ -638,7 +636,7 @@ struct HfTaskDplus {
           flagGenB = getBHadMotherFlag(bHadMother.pdgCode());
           ptGenB = bHadMother.pt();
         }
-        for (const auto& recCol : mcRecoCollisions) {
+        for (const auto& recCol : recoCollsPerGenMcColl) {
           numPvContr = std::max<float>(numPvContr, recCol.numContrib());
         }
         fillHistoMCGen(particle);
