@@ -110,8 +110,8 @@ o2physics_add_dpl_workflow(photon-charged-trigger-producer
                     REUSE_FROM JetDataModelPCH
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
-o2physics_add_dpl_workflow(hadron-photon-correlation
-										SOURCES hadronPhotonCorrelation.cxx
+o2physics_add_dpl_workflow(hadron-photon-correlation-sim
+										SOURCES hadronPhotonCorrelationSim.cxx
 										REUSE_FROM JetDataModelPCH
 										PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
 										COMPONENT_NAME Analysis)
