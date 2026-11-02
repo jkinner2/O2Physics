@@ -99,7 +99,7 @@ o2physics_add_dpl_workflow(photon-isolation-qa
 o2physics_add_dpl_workflow(hadron-photon-correlation
                     SOURCES hadronPhotonCorrelation.cxx
                     REUSE_FROM JetDataModelPCH
-                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
                     COMPONENT_NAME Analysis)
 o2physics_add_dpl_workflow(task-emc-extensive-mc-qa
                     SOURCES taskEmcExtensiveMcQa.cxx
