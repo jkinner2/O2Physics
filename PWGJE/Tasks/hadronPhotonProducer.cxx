@@ -9,7 +9,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-/// \file photonChargedTriggerProducer.cxx
+/// \file hadronPhotonProducer.cxx
 /// \author Julius Kinner
 /// \brief photon-jet angular correlation table producer
 ///
@@ -18,7 +18,7 @@
 #include "PWGJE/Core/JetDerivedDataUtilities.h"
 #include "PWGJE/DataModel/Jet.h"
 #include "PWGJE/DataModel/JetReducedData.h"
-#include "PWGJE/DataModel/PhotonChargedTriggerCorrelation.h"
+#include "PWGJE/DataModel/HadronPhotonCorrelation.h"
 //
 #include "PWGEM/PhotonMeson/DataModel/gammaTables.h"
 
@@ -60,7 +60,7 @@ concept IsJetCollisionMCD = std::same_as<std::remove_cvref_t<T>, aod::JetCollisi
 template <typename T>
 concept HasTrueCollision = IsJetMcCollision<T> || IsJetCollisionMCD<T>;
 
-struct PhotonChargedTriggerProducer {
+struct HadronPhotonProducer {
   struct : ProducesGroup {
     // reco
     Produces<aod::CollisionsExtraCorr> collisionExtraCorr;
@@ -297,13 +297,13 @@ struct PhotonChargedTriggerProducer {
   {
     fillRecoCollisionTrigger(collision, tracks);
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processRecoCollisionTrigger, "process correlation collision_extra and trigger table (reconstructed)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processRecoCollisionTrigger, "process correlation collision_extra and trigger table (reconstructed)", false);
 
   void processMcRecoCollisionTrigger(aod::JetCollisionMCD const& collision, aod::JetTracks const& tracks, aod::JetMcCollisions const&)
   {
     fillRecoCollisionTrigger(collision, tracks);
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processMcRecoCollisionTrigger, "process correlation collision_extra and trigger table (reconstructed MC)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processMcRecoCollisionTrigger, "process correlation collision_extra and trigger table (reconstructed MC)", false);
 
   void processRecoPipmTPCTOF(aod::JetCollision const& collision,
                              soa::Join<aod::JetTracks, aod::JTrackPIs> const& tracks, soa::Join<aod::Tracks, aod::TracksExtra, aod::pidTPCPi, aod::pidTOFPi> const&)
@@ -335,7 +335,7 @@ struct PhotonChargedTriggerProducer {
       tableProduction.pipm(track.collisionId(), track.globalIndex(), track.pt(), track.phi(), track.eta());
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processRecoPipmTPCTOF, "process pipm (TPC-TOF) table (reconstructed)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processRecoPipmTPCTOF, "process pipm (TPC-TOF) table (reconstructed)", false);
 
   void processRecoPipmTPC(aod::JetCollision const& collision,
                           soa::Join<aod::JetTracks, aod::JTrackPIs> const& tracks, soa::Join<aod::Tracks, aod::pidTPCPi> const&)
@@ -367,7 +367,7 @@ struct PhotonChargedTriggerProducer {
       tableProduction.pipm(track.collisionId(), track.globalIndex(), track.pt(), track.phi(), track.eta());
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processRecoPipmTPC, "process pipm (TPC) table (reconstructed)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processRecoPipmTPC, "process pipm (TPC) table (reconstructed)", false);
 
   void processRecoPhotonPCM(soa::Join<aod::JetCollisions, aod::JCollisionPIs>::iterator const& collision,
                             aod::V0PhotonsKF const& v0Photons, aod::V0Legs const&)
@@ -415,7 +415,7 @@ struct PhotonChargedTriggerProducer {
                                     p4V0PCMPair.Pt(), RecoDecay::constrainAngle(p4V0PCMPair.Phi(), 0), p4V0PCMPair.Eta(), p4V0PCMPair.M());
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processRecoPhotonPCM, "process photonPCM table (reconstructed)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processRecoPhotonPCM, "process photonPCM table (reconstructed)", false);
 
   void processMcCorrTables(aod::JetMcCollision const& mcCollision, aod::JetParticles const& mcParticles)
   {
@@ -475,10 +475,10 @@ struct PhotonChargedTriggerProducer {
     histos.fill(HIST("true/h2_zPvMult"), mcCollision.posZ(), nCharged);
     tableProduction.mcCollisionExtraCorr(thirdDecimalTruePosZ, isTriggerEvent, maxChargedPt, nCharged);
   }
-  PROCESS_SWITCH(PhotonChargedTriggerProducer, processMcCorrTables, "process table production (mc)", false);
+  PROCESS_SWITCH(HadronPhotonProducer, processMcCorrTables, "process table production (mc)", false);
 };
 
 WorkflowSpec defineDataProcessing(ConfigContext const& configContext)
 {
-  return WorkflowSpec{adaptAnalysisTask<PhotonChargedTriggerProducer>(configContext)};
+  return WorkflowSpec{adaptAnalysisTask<HadronPhotonProducer>(configContext)};
 }

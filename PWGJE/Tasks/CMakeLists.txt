@@ -96,8 +96,8 @@ o2physics_add_dpl_workflow(photon-isolation-qa
                     SOURCES photonIsolationQA.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2::EMCALCalib O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
-o2physics_add_dpl_workflow(photon-charged-trigger-correlation
-                    SOURCES photonChargedTriggerCorrelation.cxx
+o2physics_add_dpl_workflow(hadron-photon-correlation
+                    SOURCES hadronPhotonCorrelation.cxx
                     REUSE_FROM JetDataModelPCH
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
@@ -105,8 +105,8 @@ o2physics_add_dpl_workflow(task-emc-extensive-mc-qa
                     SOURCES taskEmcExtensiveMcQa.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2::EMCALBase O2Physics::AnalysisCore O2Physics::EventFilteringUtils
                     COMPONENT_NAME Analysis)
-o2physics_add_dpl_workflow(photon-charged-trigger-producer
-                    SOURCES photonChargedTriggerProducer.cxx
+o2physics_add_dpl_workflow(hadron-photon-producer
+                    SOURCES hadronPhotonProducer.cxx
                     REUSE_FROM JetDataModelPCH
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
