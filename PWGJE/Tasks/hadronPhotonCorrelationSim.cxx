@@ -10,7 +10,7 @@
 // or submit itself to any jurisdiction.
 
 ///
-/// \file   hadronPhotonCorrelation.cxx
+/// \file   hadronPhotonCorrelationSim.cxx
 /// \author Peter Stratmann <peter.stratmann@cern.ch>
 /// \brief This code loops over JetTracks to extract pt and angular information
 ///        for hadrons and photons to compute angular correlations
@@ -57,7 +57,7 @@ using namespace o2::soa;
 using namespace o2::constants::physics;
 using namespace o2::constants::math;
 
-struct HadronPhotonCorrelation {
+struct HadronPhotonCorrelationSim {
 
   Configurable<std::string> eventSelections{"eventSelections", "sel8", "choose event selection"};
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "set track selections"};
@@ -514,7 +514,7 @@ struct HadronPhotonCorrelation {
 
     registry.fill(HIST("generated/events/hPtHat"), getCollisionPtHat(particles));
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processEventsMCGen, "event stats MC gen", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processEventsMCGen, "event stats MC gen", true);
 
   void processEventsMCReco(JetCollisionMCD const& collision,
                            JetMcCollisions const&,
@@ -535,7 +535,7 @@ struct HadronPhotonCorrelation {
     registry.fill(HIST("reconstructed/events/hEventStats"), 3, collision.mcCollision().weight());
     registry.fill(HIST("reconstructed/events/hEventStats"), 5, collision.mcCollision().xsectGen());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processEventsMCReco, "event stats MC reco", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processEventsMCReco, "event stats MC reco", true);
 
   /****************************************************************************************************
   ************************************************ TRIGGER ********************************************
@@ -565,7 +565,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/triggers/hTrigMultReco"), nTrigs);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processTrigsReco, "trigger particle properties", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processTrigsReco, "trigger particle properties", true);
 
   /*********************************************** MC ************************************************/
 
@@ -595,7 +595,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/triggers/hTrigMultReco"), nTrigs, collision.mcCollision().weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processTrigsMCReco, "trigger particle mc properties", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processTrigsMCReco, "trigger particle mc properties", true);
 
   void processTrigsMCGen(JetMcCollision const& collision,
                          JetParticles const& particles)
@@ -614,7 +614,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("generated/triggers/hTrigMultGen"), nTrigs, collision.weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processTrigsMCGen, "trigger particle mc properties", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processTrigsMCGen, "trigger particle mc properties", true);
 
   /****************************************************************************************************
   ********************************************** PHOTONS **********************************************
@@ -655,7 +655,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/photons/hPhotonMultReco"), nPhotons);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPhotonCorrelations, "hadron-photon correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPhotonCorrelations, "hadron-photon correlation", true);
 
   /*********************************************** MC ************************************************/
 
@@ -698,7 +698,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/photons/hPhotonMultReco"), nPhotons, collision_reco.mcCollision().weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPhotonCorrelationsMCReco, "hadron-photon correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPhotonCorrelationsMCReco, "hadron-photon correlation", true);
 
   void processPhotonCorrelationsMCGen(JetMcCollision const& collision,
                                       JetParticles const& tracks_true)
@@ -766,7 +766,7 @@ struct HadronPhotonCorrelation {
 
     registry.fill(HIST("generated/photons/hPhotonMultGen"), nPhotons, collision.weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPhotonCorrelationsMCGen, "mc hadron-photon correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPhotonCorrelationsMCGen, "mc hadron-photon correlation", true);
 
   /****************************************************************************************************
   ***************************************** HADRONS ***************************************************
@@ -808,7 +808,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/hadrons/hHadronMultReco"), nHadrons);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processHadronCorrelations, "hadron-hadron correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processHadronCorrelations, "hadron-hadron correlation", true);
 
   /*********************************************** MC ************************************************/
 
@@ -849,7 +849,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("generated/hadrons/hHadronMultGen"), nHadrons, collision.weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processHadronCorrelationsMCGen, "mc hadron-hadron correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processHadronCorrelationsMCGen, "mc hadron-hadron correlation", true);
 
   void processHadronCorrelationsMCReco(JetCollisionMCD const& collision_reco,
                                        JetMcCollisions const&,
@@ -907,7 +907,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/hadrons/hHadronMultReco"), nHadrons, collision_reco.mcCollision().weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processHadronCorrelationsMCReco, "mc hadron-hadron correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processHadronCorrelationsMCReco, "mc hadron-hadron correlation", true);
 
   /****************************************************************************************************
   *************************************** CHARGED PIONS ***********************************************
@@ -952,7 +952,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/charged/hPionMultReco"), nPions);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPionCorrelations, "hadron-pion correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPionCorrelations, "hadron-pion correlation", true);
 
   /*********************************************** MC ************************************************/
 
@@ -1027,7 +1027,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("generated/charged/hPionMultGen"), nPions, collision.weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPionCorrelationsMCGen, "mc hadron-pion correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPionCorrelationsMCGen, "mc hadron-pion correlation", true);
 
   void processPionCorrelationsMCReco(JetCollisionMCD const& collision_reco,
                                      JetMcCollisions const&,
@@ -1074,7 +1074,7 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("reconstructed/charged/hPionMultReco"), nPions, collision_reco.mcCollision().weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processPionCorrelationsMCReco, "mc hadron-pion correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processPionCorrelationsMCReco, "mc hadron-pion correlation", true);
 
   /****************************************************************************************************
   ****************************************** NEUTRALS *************************************************
@@ -1169,10 +1169,10 @@ struct HadronPhotonCorrelation {
     }
     registry.fill(HIST("generated/neutral/hNeutralMultGen"), nNeutrals, collision.weight());
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processNeutralCorrelationsMCGen, "mc hadron-pion correlation", true);
+  PROCESS_SWITCH(HadronPhotonCorrelationSim, processNeutralCorrelationsMCGen, "mc hadron-pion correlation", true);
 };
 
 WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
 {
-  return WorkflowSpec{adaptAnalysisTask<HadronPhotonCorrelation>(cfgc)};
+  return WorkflowSpec{adaptAnalysisTask<HadronPhotonCorrelationSim>(cfgc)};
 };
