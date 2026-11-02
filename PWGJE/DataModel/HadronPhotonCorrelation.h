@@ -10,13 +10,13 @@
 // or submit itself to any jurisdiction.
 
 ///
-/// \brief table definitions for photon-hadron correlation analyses
+/// \brief table definitions for hadron-photon correlation analyses
 ///
 /// \author Julius Kinner
-/// \file PhotonChargedTriggerCorrelation.h
+/// \file HadronPhotonCorrelation.h
 
-#ifndef PWGJE_DATAMODEL_PHOTONCHARGEDTRIGGERCORRELATION_H_
-#define PWGJE_DATAMODEL_PHOTONCHARGEDTRIGGERCORRELATION_H_
+#ifndef PWGJE_DATAMODEL_HADRONPHOTONCORRELATION_H_
+#define PWGJE_DATAMODEL_HADRONPHOTONCORRELATION_H_
 
 #include "PWGEM/PhotonMeson/DataModel/gammaTables.h"
 #include "PWGJE/DataModel/Jet.h"
@@ -135,4 +135,4 @@ DECLARE_SOA_TABLE(TriggerParticles, "AOD", "TRIGGERPARTICLES",
 using TriggerParticle = TriggerParticles::iterator;
 } // namespace o2::aod
 
-#endif // PWGJE_DATAMODEL_PHOTONCHARGEDTRIGGERCORRELATION_H_
+#endif // PWGJE_DATAMODEL_HADRONPHOTONCORRELATION_H_

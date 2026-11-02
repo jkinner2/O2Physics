@@ -9,7 +9,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-/// \file photonChargedTriggerCorrelation.cxx
+/// \file hadronPhotonCorrelation.cxx
 /// \author Julius Kinner
 /// \brief photon-jet angular correlation analysis
 ///
@@ -18,7 +18,7 @@
 /// Also contains checks and monte-carlo (efficiency, purity, mc-true correlation,...)
 /// End goal of studying correlations between direct photons and jets
 
-#include "PWGJE/DataModel/PhotonChargedTriggerCorrelation.h"
+#include "PWGJE/DataModel/HadronPhotonCorrelation.h"
 
 #include "PWGJE/DataModel/Jet.h"
 #include "PWGJE/DataModel/JetReducedData.h"
@@ -85,7 +85,7 @@ using BinningZPvMult = ColumnBinningPolicy<aod::jcollision::PosZ, aod::collision
 
 const double absEtaMaxDefault = 0.8;
 
-struct PhotonChargedTriggerCorrelation {
+struct HadronPhotonCorrelation {
   // configurables
 
   // general (kenobi)
@@ -971,7 +971,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, hadronsThisEvent, funcMixing, nMixingAt0Hadron);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processCorrHadron, "process standard correlation for associated hardons", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processCorrHadron, "process standard correlation for associated hardons", false);
 
   void processCorrPipm(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::Pipms const& pipms)
   {
@@ -1023,7 +1023,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, pipmsThisEvent, funcMixing, nMixingAt0Pipm);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processCorrPipm, "process standard correlation for associated pipm", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processCorrPipm, "process standard correlation for associated pipm", false);
 
   void processCorrPhotonPCM(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::PhotonPCMs const& photonPCMs)
   {
@@ -1075,7 +1075,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPCMsThisEvent, funcMixing, nMixingAt0PhotonPCM);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processCorrPhotonPCM, "process standard correlation for associated photonPCM", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processCorrPhotonPCM, "process standard correlation for associated photonPCM", false);
 
   void processCorrPhotonPCMPair(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::PhotonPCMPairs const& photonPCMPairs)
   {
@@ -1198,7 +1198,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPCMPairsThisEvent, funcMixing, nMixingAt0H0PCM);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processCorrPhotonPCMPair, "process standard correlation for associated pi0PCM", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processCorrPhotonPCMPair, "process standard correlation for associated pi0PCM", false);
 
   void processCorrPhotonPCMPairMix(CorrCollisions const& collisions, aod::PhotonPCMs const& photonPCMs)
   {
@@ -1233,7 +1233,7 @@ struct PhotonChargedTriggerCorrelation {
       }
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processCorrPhotonPCMPairMix, "process gamma-gamma mixing for photonPCM", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processCorrPhotonPCMPairMix, "process gamma-gamma mixing for photonPCM", false);
 
   void processPCMDCAz(CorrCollision const& collision, aod::PhotonPCMs const& photonPCMs, aod::V0PhotonsKF const&)
   {
@@ -1247,7 +1247,7 @@ struct PhotonChargedTriggerCorrelation {
                   collision.ptMax(), photonPCM.pt(), photonPCM.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks());
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processPCMDCAz, "process to test DCAz distribution of photons in trigger collisions", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processPCMDCAz, "process to test DCAz distribution of photons in trigger collisions", false);
 
   // MC ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ==========================================================================================================================================================================================
@@ -1520,7 +1520,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcTrueCorr, "process mc-true (all collisions) correlation for multiple associated particles", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueCorr, "process mc-true (all collisions) correlation for multiple associated particles", false);
 
   void processMcTrueAssocEvCorr(CorrMcDCollisions const& collisions, CorrMcCollisions const&, aod::TriggerParticles const& triggerParticles, aod::JetParticles const& mcParticles)
   {
@@ -1552,7 +1552,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::TrueAssocEv>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcTrueAssocEvCorr, "process mc-true (reco collisions) correlation for multiple associated particles", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueAssocEvCorr, "process mc-true (reco collisions) correlation for multiple associated particles", false);
 
   void processMcTrueAssocEvRecoPtTrigCorr(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::JetTracksMCD const&, CorrMcCollisions const&, aod::JetParticles const& mcParticles)
   {
@@ -1584,7 +1584,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::TrueAssocEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcTrueAssocEvRecoPtTrigCorr, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueAssocEvRecoPtTrigCorr, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
 
   void processMcRecoCorrHadron(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::Hadrons const& hadrons,
                                aod::JetTracksMCD const&, aod::JetParticles const&)
@@ -1676,7 +1676,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, hadronsThisEvent, funcMixing, nMixingAt0Hadron);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcRecoCorrHadron, "process correlation for associated hardons with additional mc information", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoCorrHadron, "process correlation for associated hardons with additional mc information", false);
 
   void processMcRecoCorrPipm(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::Pipms const& pipms,
                              aod::JetTracksMCD const&, aod::JetParticles const&)
@@ -1768,7 +1768,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, pipmsThisEvent, funcMixing, nMixingAt0Pipm);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcRecoCorrPipm, "process correlation for associated pipms with additional mc information", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoCorrPipm, "process correlation for associated pipms with additional mc information", false);
 
   void processMcRecoCorrPhotonPCM(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::PhotonPCMs const& photonPCMs,
                                   aod::JetTracksMCD const&, aod::JetParticles const&)
@@ -1864,7 +1864,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPCMsThisEvent, funcMixing, nMixingAt0PhotonPCM);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcRecoCorrPhotonPCM, "process correlation for associated photonPCMs with additional mc information", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoCorrPhotonPCM, "process correlation for associated photonPCMs with additional mc information", false);
 
   void processMcRecoCorrPi0PCM(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::PhotonPCMPairs const& photonPCMPairs,
                                aod::JetTracksMCD const&, aod::JetParticles const&)
@@ -1985,7 +1985,7 @@ struct PhotonChargedTriggerCorrelation {
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPCMPairsThisEvent, funcMixing, nMixingAt0PhotonPCM);
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcRecoCorrPi0PCM, "process correlation for associated pi0PCMs with additional mc information", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoCorrPi0PCM, "process correlation for associated pi0PCMs with additional mc information", false);
 
   // other ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2320,7 +2320,7 @@ struct PhotonChargedTriggerCorrelation {
       }
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcRecoCorrection, "process mc reconstruction to calculate corrections", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoCorrection, "process mc reconstruction to calculate corrections", false);
 
   void processMcTrueCorrection(CorrMcCollision const& mcCollision, aod::JetParticles const& mcParticles)
   {
@@ -2371,7 +2371,7 @@ struct PhotonChargedTriggerCorrelation {
       }
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcTrueCorrection, "process mc true data to calculate corrections", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueCorrection, "process mc true data to calculate corrections", false);
 
   void processPCMDCAzTrue(CorrMcDCollision const& collision, aod::PhotonPCMs const& photonPCMs, aod::V0PhotonsKF const&, aod::JetTracksMCD const&,
                           CorrMcCollisions const&, aod::JetParticles const&)
@@ -2397,7 +2397,7 @@ struct PhotonChargedTriggerCorrelation {
                   collision.ptMax(), photonPCM.pt(), photonPCM.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks());
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processPCMDCAzTrue, "process to test true DCAz distribution of photons in trigger collisions", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processPCMDCAzTrue, "process to test true DCAz distribution of photons in trigger collisions", false);
 
   // last /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2440,7 +2440,7 @@ struct PhotonChargedTriggerCorrelation {
       }
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processRecoLast, "process general info for reconstructed collisions and later correlations last", true);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processRecoLast, "process general info for reconstructed collisions and later correlations last", true);
 
   void processMcLast(CorrMcDCollisions const& collisions, aod::Triggers const& triggers, aod::JetTracksMCD const&,
                      CorrMcCollisions const& mcCollisions, aod::TriggerParticles const& triggerParticles, aod::JetParticles const&)
@@ -2503,10 +2503,10 @@ struct PhotonChargedTriggerCorrelation {
       }
     }
   }
-  PROCESS_SWITCH(PhotonChargedTriggerCorrelation, processMcLast, "process general MC info for collisions and later correlations last", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcLast, "process general MC info for collisions and later correlations last", false);
 };
 
 WorkflowSpec defineDataProcessing(ConfigContext const& configContext)
 {
-  return WorkflowSpec{adaptAnalysisTask<PhotonChargedTriggerCorrelation>(configContext)};
+  return WorkflowSpec{adaptAnalysisTask<HadronPhotonCorrelation>(configContext)};
 }
