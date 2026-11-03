@@ -1053,7 +1053,7 @@ struct HadronPhotonCorrelation {
   // correction trigger as function of pt
   double triggerPtCorrection(double const value)
   {
-    return getH1ValueAt(h1PtCorrectionTrigger, value) : 1;
+    return applyCTotTrigger ? getH1ValueAt(h1PtCorrectionTrigger, value) : 1;
   }
 
   // rescale of pt spectra for mc
@@ -1438,38 +1438,35 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
-  void processPhotonPcmPairMix(CorrCollisions const& collisions, aod::V0PhotonsKF const& v0Photons, aod::V0Legs const&)
+  void processPhotonPcmPairMix(CorrCollisions const& collisions, PhotonPcmsWithV0 const& photonPcms,
+                               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
-    auto v0PhotonsTuple = std::make_tuple(v0Photons);
-    SameKindPair<CorrCollisions, aod::V0PhotonsKF, BinningZPvMult> pairs{binningZPvMult, nNeighboursMixingPhotonPcmPair, -1, collisions, v0PhotonsTuple, &cache};
+    auto photonPcmsTuple = std::make_tuple(photonPcms);
+    SameKindPair<CorrCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, nNeighboursMixingPhotonPcmPair, -1, collisions, photonPcmsTuple, &cache};
 
     // mixed events
     for (auto pair = pairs.begin(); pair != pairs.end(); pair++) {
-      auto const& [collision1, v0Photons1, collision2, v0Photons2] = *pair;
+      auto const& [collision1, photonPcms1, collision2, photonPcms2] = *pair;
       // event selection
       if (!totalEvSel(collision1) || !totalEvSel(collision2)) {
         continue;
       }
       // mixing loop
-      for (auto const& [v0Photon1, v0Photon2] : soa::combinations(soa::CombinationsFullIndexPolicy(v0Photons1, v0Photons2))) {
-        ROOT::Math::PtEtaPhiMVector const p4v0Photon1(v0Photon1.pt(), v0Photon1.eta(), v0Photon1.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4v0Photon2(v0Photon2.pt(), v0Photon2.eta(), v0Photon2.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4v0PhotonPair = p4v0Photon1 + p4v0Photon2;
-
-        // match kinematics of producer pairs
-        if (std::abs(p4v0PhotonPair.eta()) > absEtaMax) {
-          continue;
-        }
+      for (auto const& [photonPcm1, photonPcm2] : soa::combinations(soa::CombinationsFullIndexPolicy(photonPcms1, photonPcms2))) {
         // reco assoc selection
-        if (!isSelectedV0Photon(v0Photon1) || !isSelectedV0Photon(v0Photon2)) {
+        if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm1) || !isSelectedAssoc<AssocType::PhotonPcm>(photonPcm2)) {
           continue;
         }
         if (!checkEnergyAsymDiPhoton(v0Photon1, v0Photon2)) {
           continue;
         }
 
-        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4v0PhotonPair.pt(), p4v0PhotonPair.M(), collision1.posZ(), collision1.nGlobalTracks());
+        ROOT::Math::PtEtaPhiMVector const p4photonPcm1(photonPcm1.pt(), photonPcm1.eta(), photonPcm1.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4photonPcm2(photonPcm2.pt(), photonPcm2.eta(), photonPcm2.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4photonPcmPair = p4photonPcm1 + p4photonPcm2;
+
+        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
       }
     }
   }
