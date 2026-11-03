@@ -1458,7 +1458,7 @@ struct HadronPhotonCorrelation {
         if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm1) || !isSelectedAssoc<AssocType::PhotonPcm>(photonPcm2)) {
           continue;
         }
-        if (!checkEnergyAsymDiPhoton(v0Photon1, v0Photon2)) {
+        if (!checkEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF())) {
           continue;
         }
 
