@@ -127,6 +127,8 @@ struct HadronPhotonCorrelation {
   Configurable<std::vector<double>> etaPcmLowSideMassRange{"etaPcmLowSideMassRange", {0.44, 0.48}, "photon-pair mass integration range below etaPcm region"};
   Configurable<std::vector<double>> etaPcmHighSideMassRange{"etaPcmHighSideMassRange", {0.58, 0.62}, "photon-pair mass integration range above etaPcm region"};
 
+  Configurable<double> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
+
   // pcm cuts
   struct : o2::framework::ConfigurableGroup {
     std::string prefix = "pcmcut_group";
@@ -602,7 +604,7 @@ struct HadronPhotonCorrelation {
 
     // check reco-mc matching
     histos.add("mc/info/h1_pt_noMatch_event", "h1_pt_noMatch_event", kTH1D, {axisN}, true);
-    histos.add("mc/info/h1_pt_noMatch_trigger", "h1_pt_noMatch_trigger", kTH1D, {axisN}, true);
+    histos.add("mc/info/h1_pt_noMatch_trigger", "h1_pt_noMatch_trigger", kTH1D, {axisPtTrig}, true);
 
     // pcm dcaZ
     histos.add("reco/plain/h5_ptTrigPtAssocDcaZZPvMult_photonPcm", "h5_ptTrigPtAssocDcaZZPvMult_photonPcm",
@@ -955,6 +957,14 @@ struct HadronPhotonCorrelation {
 
   // reco/systematic cuts ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+  // energy asymmetry for photon pair
+  double checkEnergyAsymDiPhoton(auto const& photonPcmPair) {
+    double const e1 = photonPcmPair.photonPcm1().pt() * std::cosh(photonPcmPair.photonPcm1().eta());
+    double const e2 = photonPcmPair.photonPcm2().pt() * std::cosh(photonPcmPair.photonPcm2().eta());
+    double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
+    return energyAsym < energyAsymmPhotonPairMax;
+  }
+
   // add pmeventId() due to unguarded call in V0PhotonCut.h qa; selection unaffected
   template <typename V0PhotonType>
   struct V0PhotonNoEvent : V0PhotonType {
@@ -973,7 +983,13 @@ struct HadronPhotonCorrelation {
   }
   bool isSelectedPhotonPcmPair(auto const& photonPcmPair)
   {
-    return isSelectedV0Photon(photonPcmPair.v0PhotonKF1()) && isSelectedV0Photon(photonPcmPair.v0PhotonKF2());
+    if (!isSelectedV0Photon(photonPcmPair.v0PhotonKF1()) || !isSelectedV0Photon(photonPcmPair.v0PhotonKF2())) {
+      return false;
+    }
+    if (!checkEnergyAsymDiPhoton(photonPcmPair)) {
+      return false;
+    }
+    return true;
   }
 
   template <AssocType AssocTypeV>
@@ -2237,10 +2253,10 @@ struct HadronPhotonCorrelation {
 
       // mgg distribution
       if constexpr (HistFillModeV == HistFillMode::PlainPt) {
-        histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0PCM"),
+        histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm"),
                   histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
-        histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0PCM"),
+        histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm"),
                     histFillInfo.ptTrig, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
                     histFillInfo.weight);
       }
@@ -2258,10 +2274,10 @@ struct HadronPhotonCorrelation {
 
       // mgg distribution
       if constexpr (HistFillModeV == HistFillMode::PlainPt) {
-        histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPCM"),
+        histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPcm"),
                   histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
-        histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPCM"),
+        histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPcm"),
                     histFillInfo.ptTrig, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
                     histFillInfo.weight);
       }
@@ -2365,7 +2381,6 @@ struct HadronPhotonCorrelation {
         continue;
       }
       if (!checkTruthLevelReco<TruthLevel::RecoMcMatched, AssocType::PhotonPcm>(photonPcm)) {
-        histos.fill(HIST("mc/info/h1_pt_noMatch_assocStd"), photonPcm.pt());
         continue;
       }
       // check mc
