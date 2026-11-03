@@ -958,9 +958,10 @@ struct HadronPhotonCorrelation {
   // reco/systematic cuts ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   // energy asymmetry for photon pair
-  double checkEnergyAsymDiPhoton(auto const& photonPcmPair) {
-    double const e1 = photonPcmPair.photonPcm1().pt() * std::cosh(photonPcmPair.photonPcm1().eta());
-    double const e2 = photonPcmPair.photonPcm2().pt() * std::cosh(photonPcmPair.photonPcm2().eta());
+  bool checkEnergyAsymDiPhoton(auto const& v0Photon1, auto const& v0Photon2)
+  {
+    double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
+    double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
     double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
     return energyAsym < energyAsymmPhotonPairMax;
   }
@@ -986,7 +987,7 @@ struct HadronPhotonCorrelation {
     if (!isSelectedV0Photon(photonPcmPair.v0PhotonKF1()) || !isSelectedV0Photon(photonPcmPair.v0PhotonKF2())) {
       return false;
     }
-    if (!checkEnergyAsymDiPhoton(photonPcmPair)) {
+    if (!checkEnergyAsymDiPhoton(photonPcmPair.v0PhotonKF1(), photonPcmPair.v0PhotonKF2())) {
       return false;
     }
     return true;
@@ -1462,14 +1463,21 @@ struct HadronPhotonCorrelation {
       }
       // mixing loop
       for (auto const& [photonPcm1, photonPcm2] : soa::combinations(soa::CombinationsFullIndexPolicy(photonPcms1, photonPcms2))) {
+        ROOT::Math::PtEtaPhiMVector const p4photonPcm1(photonPcm1.pt(), photonPcm1.eta(), photonPcm1.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4photonPcm2(photonPcm2.pt(), photonPcm2.eta(), photonPcm2.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4photonPcmPair = p4photonPcm1 + p4photonPcm2;
+
+        // match kinematics of producer pairs
+        if (std::abs(p4photonPcmPair.eta()) > absEtaMax) {
+          continue;
+        }
         // reco assoc selection
         if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm1) || !isSelectedAssoc<AssocType::PhotonPcm>(photonPcm2)) {
           continue;
         }
-
-        ROOT::Math::PtEtaPhiMVector const p4photonPcm1(photonPcm1.pt(), photonPcm1.eta(), photonPcm1.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4photonPcm2(photonPcm2.pt(), photonPcm2.eta(), photonPcm2.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4photonPcmPair = p4photonPcm1 + p4photonPcm2;
+        if (!checkEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF())) {
+          continue;
+        }
 
         histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
       }

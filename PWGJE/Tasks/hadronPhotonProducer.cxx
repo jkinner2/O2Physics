@@ -98,7 +98,7 @@ struct HadronPhotonProducer {
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
 
-  Configurable<double> ptMinHadron{"ptMinHadron", 0.2, "min pt value for hadrons"};
+  Configurable<double> ptMinHadron{"ptMinHadron", 0.1, "min pt value for hadrons"};
 
   Configurable<double> piPidLowPt{"piPidLowPt", 0.5, "max pt value for pipm pid without tof"};
   Configurable<double> piPidHighPt{"piPidHighPt", 2.5, "min pt value for pipm pid without tof in relativistic rise of Bethe-Bloch"};
@@ -124,7 +124,6 @@ struct HadronPhotonProducer {
 
   // map jetTracks to produced triggers
   std::map<int32_t, int32_t> trackToTriggerMap;
-  std::map<int32_t, int32_t> v0PhotonToPhotonPcmMap;
 
   HistogramRegistry histos{"histogramRegistry", {}, OutputObjHandlingPolicy::AnalysisObject, false, false};
 
@@ -420,7 +419,6 @@ struct HadronPhotonProducer {
   {
     // clear mapping at start of dataframe (in first process)
     trackToTriggerMap.clear();
-    v0PhotonToPhotonPcmMap.clear();
 
     for (auto const& collision : collisions) {
       // event selection
@@ -524,7 +522,7 @@ struct HadronPhotonProducer {
 
       // hadron/pipm
       for (auto const& track : tracksThisEvent) {
-        std::vector<int> intersectTriggers;
+        std::vector<int> intersectTriggerIds;
 
         // track selection
         if (!checkTrackCuts(track)) {
@@ -534,7 +532,7 @@ struct HadronPhotonProducer {
         // get possible overlap with triggers
         auto const triggerTrackIt = trackToTriggerMap.find(track.globalIndex());
         if (triggerTrackIt != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerTrackIt->second);
+          intersectTriggerIds.push_back(triggerTrackIt->second);
         }
 
         // truthLevel and ptTrue
@@ -548,7 +546,7 @@ struct HadronPhotonProducer {
 
         // hadron info
         histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
-        tableProduction.hadron(track.collisionId(), intersectTriggers,
+        tableProduction.hadron(track.collisionId(), intersectTriggerIds,
                               track.pt(), track.phi(), track.eta(),
                               static_cast<int>(truthLevelHadron), truePtHadron);
         tableProduction.hadronTrackId(track.globalIndex());
@@ -576,7 +574,7 @@ struct HadronPhotonProducer {
 
         // pipm info
         histos.fill(HIST("reco/h3_ptPhiEta_pipm"), track.pt(), track.phi(), track.eta());
-        tableProduction.pipm(track.collisionId(), intersectTriggers,
+        tableProduction.pipm(track.collisionId(), intersectTriggerIds,
                             track.pt(), track.phi(), track.eta(),
                             static_cast<int>(truthLevelPipm), ptTruePipm);
         tableProduction.pipmTrackId(track.globalIndex());
@@ -627,7 +625,7 @@ struct HadronPhotonProducer {
 
       // photonPcm
       for (auto const& v0Photon : v0PhotonsThisEvent) {
-        std::vector<int> intersectTriggers;
+        std::vector<int> intersectTriggerIds;
 
         // photon selection
         if (std::abs(v0Photon.eta()) > absEtaMax) {
@@ -643,11 +641,11 @@ struct HadronPhotonProducer {
         // get possible overlap with triggers
         auto const triggerPosTrackIt = trackToTriggerMap.find(posTrack.globalIndex());
         if (triggerPosTrackIt != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerPosTrackIt->second);
+          intersectTriggerIds.push_back(triggerPosTrackIt->second);
         }
         auto const triggerNegTrackIt = trackToTriggerMap.find(negTrack.globalIndex());
         if (triggerNegTrackIt != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerNegTrackIt->second);
+          intersectTriggerIds.push_back(triggerNegTrackIt->second);
         }
 
         // truthLevel and ptTrue
@@ -661,17 +659,16 @@ struct HadronPhotonProducer {
 
         // photonPcm info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcm"), v0Photon.pt(), v0Photon.phi(), v0Photon.eta());
-        tableProduction.photonPcm(v0Photon.collisionId(), intersectTriggers,
+        tableProduction.photonPcm(v0Photon.collisionId(), intersectTriggerIds,
                                   v0Photon.pt(), v0Photon.phi(), v0Photon.eta(),
                                   static_cast<int>(truthLevelPhotonPcm), ptTruePhotonPcm);
         tableProduction.photonPcmTrackId(v0Photon.posTrack().trackId(), v0Photon.negTrack().trackId());
         tableProduction.photonPcmV0PhotonId(v0Photon.globalIndex());
-        v0PhotonToPhotonPcmMap[v0Photon.globalIndex()] = tableProduction.photonPcm.lastIndex();
       }
 
       // photonPcmPair
       for (auto const& [v0Photon1, v0Photon2] : soa::combinations(soa::CombinationsStrictlyUpperIndexPolicy(v0PhotonsThisEvent, v0PhotonsThisEvent))) {
-        std::vector<int> intersectTriggers;
+        std::vector<int> intersectTriggerIds;
 
         // get kinematics
         ROOT::Math::PtEtaPhiMVector const p4V0Pcm1(v0Photon1.pt(), v0Photon1.eta(), v0Photon1.phi(), 0.);
@@ -690,19 +687,19 @@ struct HadronPhotonProducer {
         // get possible overlap with triggers
         auto const triggerPosTrack1It = trackToTriggerMap.find(posTrack1.globalIndex());
         if (triggerPosTrack1It != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerPosTrack1It->second);
+          intersectTriggerIds.push_back(triggerPosTrack1It->second);
         }
         auto const triggerNegTrack1It = trackToTriggerMap.find(negTrack1.globalIndex());
         if (triggerNegTrack1It != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerNegTrack1It->second);
+          intersectTriggerIds.push_back(triggerNegTrack1It->second);
         }
         auto const triggerPosTrack2It = trackToTriggerMap.find(posTrack2.globalIndex());
         if (triggerPosTrack2It != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerPosTrack2It->second);
+          intersectTriggerIds.push_back(triggerPosTrack2It->second);
         }
         auto const triggerNegTrack2It = trackToTriggerMap.find(negTrack2.globalIndex());
         if (triggerNegTrack2It != trackToTriggerMap.end()) {
-          intersectTriggers.push_back(triggerNegTrack2It->second);
+          intersectTriggerIds.push_back(triggerNegTrack2It->second);
         }
 
         // truthLevel and ptTrue
@@ -724,8 +721,7 @@ struct HadronPhotonProducer {
 
         // photonPcmPair info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcmPair"), p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta());
-        tableProduction.photonPcmPair(v0Photon1.collisionId(), intersectTriggers,
-                                      v0PhotonToPhotonPcmMap.at(v0Photon1.globalIndex()), v0PhotonToPhotonPcmMap.at(v0Photon2.globalIndex()),
+        tableProduction.photonPcmPair(v0Photon1.collisionId(), intersectTriggerIds,
                                       p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta(), p4V0PcmPair.M(),
                                       static_cast<int>(truthLevelPi0Pcm), static_cast<int>(truthLevelEtaPcm), ptTruePhotonPcmPair);
         tableProduction.photonPcmPairTrackId(v0Photon1.posTrack().trackId(), v0Photon1.negTrack().trackId(), v0Photon2.posTrack().trackId(), v0Photon2.negTrack().trackId());

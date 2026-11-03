@@ -174,8 +174,6 @@ DECLARE_SOA_TABLE(PhotonPcmV0PhotonIds, "AOD", "PHOTONPCMV0PHOTONID",
 // photonPcm pairs
 namespace photon_pcm_pair
 {
-DECLARE_SOA_INDEX_COLUMN_FULL(PhotonPcm1, photonPcm1, int, PhotonPcms, "_1");
-DECLARE_SOA_INDEX_COLUMN_FULL(PhotonPcm2, photonPcm2, int, PhotonPcms, "_2");
 DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF1, v0PhotonKF1, int, V0PhotonsKF, "_1");
 DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF2, v0PhotonKF2, int, V0PhotonsKF, "_2");
 DECLARE_SOA_INDEX_COLUMN_FULL(PosJetTrack1, posJetTrack1, int, JetTracks, "_pos1");
@@ -187,7 +185,7 @@ DECLARE_SOA_COLUMN(TruthLevelRecoPi0Pcm, truthLevelRecoPi0Pcm, int);
 DECLARE_SOA_COLUMN(TruthLevelRecoEtaPcm, truthLevelRecoEtaPcm, int);
 } // namespace photon_pcm_pair
 DECLARE_SOA_TABLE(PhotonPcmPairs, "AOD", "PHOTONPCMPAIR",
-                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds, photon_pcm_pair::PhotonPcm1Id, photon_pcm_pair::PhotonPcm2Id,
+                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
                   corr_common::Pt, corr_common::Phi, corr_common::Eta, photon_pcm_pair::Mgg,
                   photon_pcm_pair::TruthLevelRecoPi0Pcm, photon_pcm_pair::TruthLevelRecoEtaPcm, corr_common::PtTrue);
 DECLARE_SOA_TABLE(PhotonPcmPairTrackIds, "AOD", "PHOTONPCMPAIRTRACKID",
