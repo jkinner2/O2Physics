@@ -255,13 +255,6 @@ struct HadronPhotonCorrelation {
     TrueAssocEvRecoPtTrig
   };
 
-  enum class CorrectionParticleType {
-    Trigger,
-    Hadron,
-    Pipm,
-    PhotonPcm
-  };
-
   struct HistPathEntry {
     HistFillMode fillMode;
     TruthLevel truthLevel;
@@ -1057,16 +1050,14 @@ struct HadronPhotonCorrelation {
   {
     return h1->GetBinContent(h1->FindFixBin(value));
   }
-  // correction helpers
-  template <CorrectionParticleType CorrectionParticleTypeV>
-  double getPtCorrection(double const value)
+  // correction trigger as function of pt
+  double triggerPtCorrection(double const value)
   {
-    if constexpr (CorrectionParticleTypeV == CorrectionParticleType::Trigger) {
-      return applyCTotTrigger ? getH1ValueAt(h1PtCorrectionTrigger, value) : 1;
-    } else {
-      static_assert(AlwaysFalseValue<CorrectionParticleTypeV>, "correctionParticleType not found");
-    }
+    return getH1ValueAt(h1PtCorrectionTrigger, value) : 1;
   }
+
+  // rescale of pt spectra for mc
+  // add stuff next
 
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
   double getDeltaPhi(double const phi1, double const phi2)
@@ -1285,7 +1276,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt());
+        histFillInfo.weight = triggerPtCorrection(trigger.pt());
         fillHistMain<HistPathsRecoStd, HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -1303,7 +1294,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getPtCorrection<CorrectionParticleType::Trigger>(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * triggerPtCorrection(mixingTrigger.pt());
         fillHistMain<HistPathsRecoStd, HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
@@ -1411,7 +1402,7 @@ struct HadronPhotonCorrelation {
           return;
         }
 
-        double const weight = getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt());
+        double const weight = triggerPtCorrection(trigger.pt());
 
         // mgg distribution
         histos.fill(HIST("reco/corr/h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair"),
@@ -1420,7 +1411,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks()),
-                                         getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt())};
+                                         triggerPtCorrection(trigger.pt())};
         histFillInfo.weight = weight;
         fillAssocsRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, associated.mgg());
       };
@@ -1439,7 +1430,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getPtCorrection<CorrectionParticleType::Trigger>(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * triggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
@@ -1447,39 +1438,38 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
-  void processPhotonPcmPairMix(CorrCollisions const& collisions, PhotonPcmsWithV0 const& photonPcms,
-                               aod::V0PhotonsKF const&, aod::V0Legs const&)
+  void processPhotonPcmPairMix(CorrCollisions const& collisions, aod::V0PhotonsKF const& v0Photons, aod::V0Legs const&)
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
-    auto photonPcmsTuple = std::make_tuple(photonPcms);
-    SameKindPair<CorrCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, nNeighboursMixingPhotonPcmPair, -1, collisions, photonPcmsTuple, &cache};
+    auto v0PhotonsTuple = std::make_tuple(v0Photons);
+    SameKindPair<CorrCollisions, aod::V0PhotonsKF, BinningZPvMult> pairs{binningZPvMult, nNeighboursMixingPhotonPcmPair, -1, collisions, v0PhotonsTuple, &cache};
 
     // mixed events
     for (auto pair = pairs.begin(); pair != pairs.end(); pair++) {
-      auto const& [collision1, photonPcms1, collision2, photonPcms2] = *pair;
+      auto const& [collision1, v0Photons1, collision2, v0Photons2] = *pair;
       // event selection
       if (!totalEvSel(collision1) || !totalEvSel(collision2)) {
         continue;
       }
       // mixing loop
-      for (auto const& [photonPcm1, photonPcm2] : soa::combinations(soa::CombinationsFullIndexPolicy(photonPcms1, photonPcms2))) {
-        ROOT::Math::PtEtaPhiMVector const p4photonPcm1(photonPcm1.pt(), photonPcm1.eta(), photonPcm1.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4photonPcm2(photonPcm2.pt(), photonPcm2.eta(), photonPcm2.phi(), 0.);
-        ROOT::Math::PtEtaPhiMVector const p4photonPcmPair = p4photonPcm1 + p4photonPcm2;
+      for (auto const& [v0Photon1, v0Photon2] : soa::combinations(soa::CombinationsFullIndexPolicy(v0Photons1, v0Photons2))) {
+        ROOT::Math::PtEtaPhiMVector const p4v0Photon1(v0Photon1.pt(), v0Photon1.eta(), v0Photon1.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4v0Photon2(v0Photon2.pt(), v0Photon2.eta(), v0Photon2.phi(), 0.);
+        ROOT::Math::PtEtaPhiMVector const p4v0PhotonPair = p4v0Photon1 + p4v0Photon2;
 
         // match kinematics of producer pairs
-        if (std::abs(p4photonPcmPair.eta()) > absEtaMax) {
+        if (std::abs(p4v0PhotonPair.eta()) > absEtaMax) {
           continue;
         }
         // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm1) || !isSelectedAssoc<AssocType::PhotonPcm>(photonPcm2)) {
+        if (!isSelectedV0Photon(v0Photon1) || !isSelectedV0Photon(v0Photon2)) {
           continue;
         }
-        if (!checkEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF())) {
+        if (!checkEnergyAsymDiPhoton(v0Photon1, v0Photon2)) {
           continue;
         }
 
-        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
+        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4v0PhotonPair.pt(), p4v0PhotonPair.M(), collision1.posZ(), collision1.nGlobalTracks());
       }
     }
   }
@@ -2116,7 +2106,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt());
+        histFillInfo.weight = triggerPtCorrection(trigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Correlation, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -2134,7 +2124,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getPtCorrection<CorrectionParticleType::Trigger>(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * triggerPtCorrection(mixingTrigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
@@ -2331,7 +2321,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt());
+        histFillInfo.weight = triggerPtCorrection(trigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
@@ -2349,7 +2339,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getPtCorrection<CorrectionParticleType::Trigger>(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * triggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
@@ -2438,7 +2428,7 @@ struct HadronPhotonCorrelation {
       for (auto const& trigger : triggersThisEvent) {
         // trigger info
         histos.fill(HIST("reco/corr/h3_ptPhiEta_trig"), trigger.pt(), trigger.phi(), trigger.eta(),
-                    getPtCorrection<CorrectionParticleType::Trigger>(trigger.pt()));
+                    triggerPtCorrection(trigger.pt()));
 
         // save trigger for mixing
         triggerMemoryReco->saveTrigger(trigger.pt(), trigger.phi(), trigger.eta(), collision.posZ(), collision.nGlobalTracks());

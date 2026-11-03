@@ -400,7 +400,6 @@ struct HadronPhotonProducer {
     AxisSpec const axisPt{200, 0, 100, "#it{p}_{T}"};
     AxisSpec const axisPhi{72, 0, constants::math::TwoPI, "#varphi"};
     AxisSpec const axisEta{64, -absEtaMax, absEtaMax, "#eta"};
-    AxisSpec const axisEAsym{100, 0, 1, "#it{alpha}"};
     AxisSpec const axisMgg{240, 0, 0.8, "#it{m}_{#gamma#gamma}"};
     // reco
     histos.add("reco/h2_zPvMult", "h2_zPvMult", kTH2D, {axisZPv, axisMult}, true);
