@@ -47,7 +47,7 @@ enum class AssocType {
 };
 
 enum class TruthLevel : int {
-  None = -1,
+  Unknown = -1,
   Reco = 0,
   RecoMcMatched = 1,
   RecoAssocEv = 2,
@@ -65,6 +65,21 @@ enum class TruthLevel : int {
   TrueDecaySelfTrig = 14
 };
 
+enum class PhotonImpurity : int {
+  Unknown = -1,
+  Pure = 0,
+  WrongEv = 1,
+  MisId = 2,
+  K0Short = 3,
+  K0Long = 4,
+  Lambda0 = 5,
+  Other = 6
+};
+constexpr double binValuePi0Impurities(PhotonImpurity const impurity)
+{
+  return static_cast<int>(impurity) + 0.5;
+}
+
 template <typename>
 bool constexpr AlwaysFalseType = false;
 template <auto>
@@ -78,7 +93,8 @@ namespace corr_common
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetMcCollision, jetMcCollision, int, JMcCollisions, "");
 DECLARE_SOA_COLUMN(Pt, pt, float);
-DECLARE_SOA_COLUMN(PtTrue, ptTrue, float);
+DECLARE_SOA_COLUMN(PtTruePure, ptTruePure, float);
+DECLARE_SOA_COLUMN(PtTrueOrigin, ptTrueOrigin, float); // and the blind forest
 DECLARE_SOA_COLUMN(Phi, phi, float);
 DECLARE_SOA_COLUMN(Eta, eta, float);
 } // namespace corr_common
@@ -137,7 +153,7 @@ DECLARE_SOA_COLUMN(TruthLevelRecoHadron, truthLevelRecoHadron, int);
 DECLARE_SOA_TABLE(Hadrons, "AOD", "HADRON",
                   o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
                   corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  hadron::TruthLevelRecoHadron, corr_common::PtTrue);
+                  hadron::TruthLevelRecoHadron, corr_common::PtTruePure);
 DECLARE_SOA_TABLE(HadronTrackIds, "AOD", "HADRONTRACKID",
                   hadron::JetTrackId);
 
@@ -150,7 +166,7 @@ DECLARE_SOA_COLUMN(TruthLevelRecoPipm, truthLevelRecoPipm, int);
 DECLARE_SOA_TABLE(Pipms, "AOD", "PIPM",
                   o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
                   corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  pipm::TruthLevelRecoPipm, corr_common::PtTrue);
+                  pipm::TruthLevelRecoPipm, corr_common::PtTruePure);
 DECLARE_SOA_TABLE(PipmTrackIds, "AOD", "PIPMTRACKID",
                   pipm::JetTrackId);
 
@@ -161,11 +177,13 @@ DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF, v0PhotonKF, int, V0PhotonsKF, "");
 DECLARE_SOA_INDEX_COLUMN_FULL(PosJetTrack, posJetTrack, int, JetTracks, "_pos");
 DECLARE_SOA_INDEX_COLUMN_FULL(NegJetTrack, negJetTrack, int, JetTracks, "_neg");
 DECLARE_SOA_COLUMN(TruthLevelRecoPhotonPcm, truthLevelRecoPhotonPcm, int);
+DECLARE_SOA_COLUMN(ImpurityPhotonPcm, impurityPhotonPcm, int);
 } // namespace photon_pcm
 DECLARE_SOA_TABLE(PhotonPcms, "AOD", "PHOTONPCM",
                   o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
                   corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  photon_pcm::TruthLevelRecoPhotonPcm, corr_common::PtTrue);
+                  photon_pcm::TruthLevelRecoPhotonPcm, corr_common::PtTruePure,
+                  photon_pcm::ImpurityPhotonPcm, corr_common::PtTrueOrigin);
 DECLARE_SOA_TABLE(PhotonPcmTrackIds, "AOD", "PHOTONPCMTRACKID",
                   photon_pcm::PosJetTrackId, photon_pcm::NegJetTrackId);
 DECLARE_SOA_TABLE(PhotonPcmV0PhotonIds, "AOD", "PHOTONPCMV0PHOTONID",
@@ -183,11 +201,13 @@ DECLARE_SOA_INDEX_COLUMN_FULL(NegJetTrack2, negJetTrack2, int, JetTracks, "_neg2
 DECLARE_SOA_COLUMN(Mgg, mgg, float);
 DECLARE_SOA_COLUMN(TruthLevelRecoPi0Pcm, truthLevelRecoPi0Pcm, int);
 DECLARE_SOA_COLUMN(TruthLevelRecoEtaPcm, truthLevelRecoEtaPcm, int);
+DECLARE_SOA_COLUMN(ImpurityPi0Pcm, impurityPi0Pcm, int);
 } // namespace photon_pcm_pair
 DECLARE_SOA_TABLE(PhotonPcmPairs, "AOD", "PHOTONPCMPAIR",
                   o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
                   corr_common::Pt, corr_common::Phi, corr_common::Eta, photon_pcm_pair::Mgg,
-                  photon_pcm_pair::TruthLevelRecoPi0Pcm, photon_pcm_pair::TruthLevelRecoEtaPcm, corr_common::PtTrue);
+                  photon_pcm_pair::TruthLevelRecoPi0Pcm, photon_pcm_pair::TruthLevelRecoEtaPcm, corr_common::PtTruePure,
+                  photon_pcm_pair::ImpurityPi0Pcm, corr_common::PtTrueOrigin);
 DECLARE_SOA_TABLE(PhotonPcmPairTrackIds, "AOD", "PHOTONPCMPAIRTRACKID",
                   photon_pcm_pair::PosJetTrack1Id, photon_pcm_pair::NegJetTrack1Id, photon_pcm_pair::PosJetTrack2Id, photon_pcm_pair::NegJetTrack2Id);
 DECLARE_SOA_TABLE(PhotonPcmPairV0PhotonIds, "AOD", "PHOTONPCMPAIRV0PHOTONID",

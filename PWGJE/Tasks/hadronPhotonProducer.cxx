@@ -48,6 +48,7 @@
 #include <cmath>
 #include <concepts>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -121,6 +122,15 @@ struct HadronPhotonProducer {
   std::vector<int> eventSelectionBits;
   int trackSelection = -1;
   std::vector<int> triggerMaskBits;
+
+  struct TruthLevelInfo {
+    TruthLevel truthLevel = TruthLevel::Unknown;
+    double ptTruePure = -1;
+  };
+  struct PhotonImpurityInfo {
+    PhotonImpurity impurity = PhotonImpurity::Unknown;
+    double ptTrueOrigin = -1;
+  };
 
   // map jetTracks to produced triggers
   std::map<int32_t, int32_t> trackToTriggerMap;
@@ -233,6 +243,34 @@ struct HadronPhotonProducer {
     return mcParticle.producedByGenerator();
   }
 
+  // check if particle has mother in parent tree
+  // returns optional pt of mother
+  std::optional<double> checkForMother(auto const& mcParticle, int const pdgCode, bool const checkAntiParticle)
+  {
+    if (!mcParticle.has_mothers()) {
+      return std::nullopt;
+    }
+    auto const mothers = mcParticle.template mothers_as<aod::JetParticles>();
+    auto mother = mothers.begin();
+    auto motherEnd = mothers.end();
+    while (mother != motherEnd) {
+
+      // LOGF(info, "searchPdgCode: %i, current[ pdgCode: %i, status: %i, primary: %i ], mother[ pdgCode: %i, status: %i, primary: %i ]",
+      //      pdgCode,
+      //      mcParticle.pdgCode(), mcParticle.getGenStatusCode(), mcParticle.isPhysicalPrimary(),
+      //      (*mother).pdgCode(), (*mother).getGenStatusCode(), (*mother).isPhysicalPrimary());
+
+      if ((*mother).pdgCode() == pdgCode || (checkAntiParticle && (*mother).pdgCode() == -pdgCode)) {
+        return (*mother).pt();
+      }
+      if (auto const ptMother = checkForMother(*mother, pdgCode, checkAntiParticle)) {
+        return ptMother;
+      }
+      mother++;
+    }
+    return std::nullopt;
+  }
+
   // checks if tracks come from photon conversion
   template <typename T_track>
   bool isConversionPhoton(T_track const& posTrack, T_track const& negTrack)
@@ -285,45 +323,74 @@ struct HadronPhotonProducer {
   // get highest reco truthLevel particle canidate
 
   template <AssocType AssocTypeV>
-  std::tuple<TruthLevel, double> getTruthLevelRecoHadronPipm(auto const& collision, auto const& track) {
+  TruthLevelInfo getMcRecoInfoHadronPipm(auto const& collision, auto const& track) {
     if (!track.has_mcParticle()) {
       return {TruthLevel::Reco, -1};
     }
     auto const& mcParticle = track.mcParticle();
-    double const ptTrue = mcParticle.pt();
     if (mcParticle.mcCollisionId() != collision.mcCollisionId()) {
-      return {TruthLevel::RecoMcMatched, ptTrue};
+      return {TruthLevel::RecoMcMatched, -1};
     }
     if constexpr (AssocTypeV == AssocType::Hadron) {
       if (!isCharged(mcParticle) || !mcParticle.isPhysicalPrimary()) {
-        return {TruthLevel::RecoAssocEv, ptTrue};
+        return {TruthLevel::RecoAssocEv, -1};
       }
     } else if constexpr (AssocTypeV == AssocType::Pipm) {
       if (std::abs(mcParticle.pdgCode()) != PDG_t::kPiPlus || !mcParticle.isPhysicalPrimary()) {
-        return {TruthLevel::RecoAssocEv, ptTrue};
+        return {TruthLevel::RecoAssocEv, -1};
       }
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
-    return {TruthLevel::RecoPure, ptTrue};
+    double const ptTruePure = mcParticle.pt();
+    return {TruthLevel::RecoPure, ptTruePure};
   }
-  std::tuple<TruthLevel, double> getTruthLevelRecoPhoton(auto const& collision, auto const& v0Photon, auto const& tracks) {
+  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoPhoton(auto const& collision, auto const& v0Photon, auto const& tracks) {
+    TruthLevelInfo truthLevelInfo;
+    PhotonImpurityInfo impurityInfo;
+
     auto const [posTrack, negTrack] = getV0LegJetTracks(v0Photon, tracks);
     if (!posTrack.has_mcParticle() || !negTrack.has_mcParticle()) {
-      return {TruthLevel::Reco, -1};
+      truthLevelInfo.truthLevel = TruthLevel::Reco;
+      return {truthLevelInfo, impurityInfo};
     }
     if (posTrack.mcParticle().mcCollisionId() != collision.mcCollisionId() || negTrack.mcParticle().mcCollisionId() != collision.mcCollisionId()) {
-      return {TruthLevel::RecoMcMatched, -1};
+      truthLevelInfo.truthLevel = TruthLevel::RecoMcMatched;
+      impurityInfo.impurity = PhotonImpurity::WrongEv;
+      return {truthLevelInfo, impurityInfo};
     }
     auto const& photons = posTrack.mcParticle().template mothers_as<aod::JetParticles>();
-    if (!isConversionPhoton(posTrack, negTrack) || !photons.begin()->isPhysicalPrimary()) {
-      return {TruthLevel::RecoAssocEv, -1};
+    bool const isPhoton = isConversionPhoton(posTrack, negTrack);
+    if (!isPhoton || !photons.begin()->isPhysicalPrimary()) {
+      truthLevelInfo.truthLevel = TruthLevel::RecoAssocEv;
+      if (!isPhoton) {
+        impurityInfo.impurity = PhotonImpurity::MisId;
+      } else {
+        if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Short, true)) {
+          impurityInfo.impurity = PhotonImpurity::K0Short;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Long, true)) {
+          impurityInfo.impurity = PhotonImpurity::K0Long;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kLambda0, true)) {
+          impurityInfo.impurity = PhotonImpurity::Lambda0;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else {
+        impurityInfo.impurity = PhotonImpurity::Other;
+        }
+      }
+      return {truthLevelInfo, impurityInfo};
     }
-    double const ptTrue = photons.begin()->pt();
-    return {TruthLevel::RecoPure, ptTrue};
+    truthLevelInfo.truthLevel = TruthLevel::RecoPure;
+    truthLevelInfo.ptTruePure = photons.begin()->pt();
+    impurityInfo.impurity = PhotonImpurity::Pure;
+    return {truthLevelInfo, impurityInfo};
   }
   template <AssocType AssocTypeV>
-  std::tuple<TruthLevel, double> getTruthLevelRecoDiPhoton(auto const& collision, auto const& v0Photon1, auto const& v0Photon2, auto const& tracks) {
+  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoDiPhoton(auto const& collision, auto const& v0Photon1, auto const& v0Photon2, auto const& tracks) {
+    TruthLevelInfo truthLevelInfo;
+    PhotonImpurityInfo impurityInfo;
+
     int constexpr PdgCode = []() {
       if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
         return PDG_t::kPi0;
@@ -336,21 +403,47 @@ struct HadronPhotonProducer {
     auto const [posTrack1, negTrack1] = getV0LegJetTracks(v0Photon1, tracks);
     auto const [posTrack2, negTrack2] = getV0LegJetTracks(v0Photon2, tracks);
     if (!posTrack1.has_mcParticle() || !negTrack1.has_mcParticle() || !posTrack2.has_mcParticle() || !negTrack2.has_mcParticle()) {
-      return {TruthLevel::Reco, -1};
+      truthLevelInfo.truthLevel = TruthLevel::Reco;
+      return {truthLevelInfo, impurityInfo};
     }
     if (!isGGFromDoubleConversion(posTrack1, negTrack1, posTrack2, negTrack2, PdgCode)) {
-      return {TruthLevel::RecoMcMatched, -1};
+      truthLevelInfo.truthLevel = TruthLevel::RecoMcMatched;
+      return {truthLevelInfo, impurityInfo};
     }
     if (posTrack1.mcParticle().mcCollisionId() != collision.mcCollisionId()) {
-      return {TruthLevel::PseudoReco, -1};
+      truthLevelInfo.truthLevel = TruthLevel::PseudoReco;
+      if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
+        impurityInfo.impurity = PhotonImpurity::WrongEv;
+      }
+      return {truthLevelInfo, impurityInfo};
     }
+    // note: do not dereference 'mothers' and store element in 'const&' (leads to seg fault)
     auto const& photons1 = posTrack1.mcParticle().template mothers_as<aod::JetParticles>();
     auto const& mothersOfPhoton = photons1.begin()->template mothers_as<aod::JetParticles>();
     if (!isDecayPrimary(*(mothersOfPhoton.begin()))) {
-      return {TruthLevel::PseudoRecoAssocEv, -1};
+      truthLevelInfo.truthLevel = TruthLevel::PseudoRecoAssocEv;
+      if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
+        if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Short, true)) {
+          impurityInfo.impurity = PhotonImpurity::K0Short;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Long, true)) {
+          impurityInfo.impurity = PhotonImpurity::K0Long;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kLambda0, true)) {
+          impurityInfo.impurity = PhotonImpurity::Lambda0;
+          impurityInfo.ptTrueOrigin = *ptMother;
+        } else {
+          impurityInfo.impurity = PhotonImpurity::Other;
+        }
+      }
+      return {truthLevelInfo, impurityInfo};
     }
-    double const ptTrue = mothersOfPhoton.begin()->pt();
-    return {TruthLevel::PseudoRecoPure, ptTrue};
+    truthLevelInfo.truthLevel = TruthLevel::PseudoRecoPure;
+    truthLevelInfo.ptTruePure = mothersOfPhoton.begin()->pt();
+    if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
+      impurityInfo.impurity = PhotonImpurity::Pure;
+    }
+    return {truthLevelInfo, impurityInfo};
   }
 
   // other ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -534,12 +627,12 @@ struct HadronPhotonProducer {
           intersectTriggerIds.push_back(triggerTrackIt->second);
         }
 
-        // truthLevel and ptTrue
-        auto const [truthLevelHadron, truePtHadron] = [&] {
+        // mc reco info
+        TruthLevelInfo const truthLevelInfoHadron = [&] {
           if constexpr (IsCollisionMCD<decltype(collision)>) {
-            return getTruthLevelRecoHadronPipm<AssocType::Hadron>(collision, track);
+            return getMcRecoInfoHadronPipm<AssocType::Hadron>(collision, track);
           } else {
-            return std::tuple{TruthLevel::None, -1};
+            return TruthLevelInfo{};
           }
         }();
 
@@ -547,7 +640,7 @@ struct HadronPhotonProducer {
         histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
         tableProduction.hadron(track.collisionId(), intersectTriggerIds,
                               track.pt(), track.phi(), track.eta(),
-                              static_cast<int>(truthLevelHadron), truePtHadron);
+                              static_cast<int>(truthLevelInfoHadron.truthLevel), truthLevelInfoHadron.ptTruePure);
         tableProduction.hadronTrackId(track.globalIndex());
 
         // pipm selection
@@ -562,12 +655,12 @@ struct HadronPhotonProducer {
           }
         }
 
-        // truthLevel and ptTrue
-        auto const [truthLevelPipm, ptTruePipm] = [&] {
+        // mc reco info
+        TruthLevelInfo const truthLevelInfoPipm = [&] {
           if constexpr (IsCollisionMCD<decltype(collision)>) {
-            return getTruthLevelRecoHadronPipm<AssocType::Pipm>(collision, track);
+            return getMcRecoInfoHadronPipm<AssocType::Pipm>(collision, track);
           } else {
-            return std::tuple{TruthLevel::None, -1};
+            return TruthLevelInfo{};
           }
         }();
 
@@ -575,7 +668,7 @@ struct HadronPhotonProducer {
         histos.fill(HIST("reco/h3_ptPhiEta_pipm"), track.pt(), track.phi(), track.eta());
         tableProduction.pipm(track.collisionId(), intersectTriggerIds,
                             track.pt(), track.phi(), track.eta(),
-                            static_cast<int>(truthLevelPipm), ptTruePipm);
+                            static_cast<int>(truthLevelInfoPipm.truthLevel), truthLevelInfoPipm.ptTruePure);
         tableProduction.pipmTrackId(track.globalIndex());
       }
     }
@@ -647,12 +740,12 @@ struct HadronPhotonProducer {
           intersectTriggerIds.push_back(triggerNegTrackIt->second);
         }
 
-        // truthLevel and ptTrue
-        auto const [truthLevelPhotonPcm, ptTruePhotonPcm] = [&] {
+        // mc reco info
+        auto const [truthLevelInfoPhotonPcm, impurityInfoPhotonPcm] = [&] {
           if constexpr (IsCollisionMCD<decltype(collision)>) {
-            return getTruthLevelRecoPhoton(collision, v0Photon, tracks);
+            return getMcRecoInfoPhoton(collision, v0Photon, tracks);
           } else {
-            return std::tuple{TruthLevel::None, -1};
+            return std::tuple{TruthLevelInfo{}, PhotonImpurityInfo{}};
           }
         }();
 
@@ -660,7 +753,8 @@ struct HadronPhotonProducer {
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcm"), v0Photon.pt(), v0Photon.phi(), v0Photon.eta());
         tableProduction.photonPcm(v0Photon.collisionId(), intersectTriggerIds,
                                   v0Photon.pt(), v0Photon.phi(), v0Photon.eta(),
-                                  static_cast<int>(truthLevelPhotonPcm), ptTruePhotonPcm);
+                                  static_cast<int>(truthLevelInfoPhotonPcm.truthLevel), truthLevelInfoPhotonPcm.ptTruePure,
+                                  static_cast<int>(impurityInfoPhotonPcm.impurity), impurityInfoPhotonPcm.ptTrueOrigin);
         tableProduction.photonPcmTrackId(v0Photon.posTrack().trackId(), v0Photon.negTrack().trackId());
         tableProduction.photonPcmV0PhotonId(v0Photon.globalIndex());
       }
@@ -701,28 +795,29 @@ struct HadronPhotonProducer {
           intersectTriggerIds.push_back(triggerNegTrack2It->second);
         }
 
-        // truthLevel and ptTrue
-        auto const [truthLevelPi0Pcm, ptTruePi0Pcm] = [&] {
+        // mc reco info
+        auto const [truthLevelInfoPi0Pcm, photonImpurityInfoPi0Pcm] = [&] {
           if constexpr (IsCollisionMCD<decltype(collision)>) {
-            return getTruthLevelRecoDiPhoton<AssocType::Pi0Pcm>(collision, v0Photon1, v0Photon2, tracks);
+            return getMcRecoInfoDiPhoton<AssocType::Pi0Pcm>(collision, v0Photon1, v0Photon2, tracks);
           } else {
-            return std::tuple{TruthLevel::None, -1};
+            return std::tuple{TruthLevelInfo{}, PhotonImpurityInfo{}};
           }
         }();
-        auto const [truthLevelEtaPcm, ptTrueEtaPcm] = [&] {
+        TruthLevelInfo const truthLevelInfoEtaPcm = [&] {
           if constexpr (IsCollisionMCD<decltype(collision)>) {
-            return getTruthLevelRecoDiPhoton<AssocType::EtaPcm>(collision, v0Photon1, v0Photon2, tracks);
+            return std::get<0>(getMcRecoInfoDiPhoton<AssocType::EtaPcm>(collision, v0Photon1, v0Photon2, tracks));
           } else {
-            return std::tuple{TruthLevel::None, -1};
+            return TruthLevelInfo{};
           }
         }();
-        double const ptTruePhotonPcmPair = std::max(ptTruePi0Pcm, ptTrueEtaPcm);
+        double const ptTruePurePhotonPcmPair = std::max(truthLevelInfoPi0Pcm.ptTruePure, truthLevelInfoEtaPcm.ptTruePure);
 
         // photonPcmPair info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcmPair"), p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta());
         tableProduction.photonPcmPair(v0Photon1.collisionId(), intersectTriggerIds,
                                       p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta(), p4V0PcmPair.M(),
-                                      static_cast<int>(truthLevelPi0Pcm), static_cast<int>(truthLevelEtaPcm), ptTruePhotonPcmPair);
+                                      static_cast<int>(truthLevelInfoPi0Pcm.truthLevel), static_cast<int>(truthLevelInfoEtaPcm.truthLevel), ptTruePurePhotonPcmPair,
+                                      static_cast<int>(photonImpurityInfoPi0Pcm.impurity), photonImpurityInfoPi0Pcm.ptTrueOrigin);
         tableProduction.photonPcmPairTrackId(v0Photon1.posTrack().trackId(), v0Photon1.negTrack().trackId(), v0Photon2.posTrack().trackId(), v0Photon2.negTrack().trackId());
         tableProduction.photonPcmPairV0PhotonId(v0Photon1.globalIndex(), v0Photon2.globalIndex());
       }
