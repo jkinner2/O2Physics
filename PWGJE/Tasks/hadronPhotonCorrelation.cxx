@@ -682,32 +682,6 @@ struct HadronPhotonCorrelation {
     }
     return true;
   }
-  // check if particle has mother in parent tree
-  bool checkForMother(auto const& mcParticle, int const pdgCode, bool const checkAntiParticle)
-  {
-    if (!mcParticle.has_mothers()) {
-      return false;
-    }
-    auto const mothers = mcParticle.template mothers_as<aod::JetParticles>();
-    auto mother = mothers.begin();
-    auto motherEnd = mothers.end();
-    while (mother != motherEnd) {
-
-      // LOGF(info, "searchPdgCode: %i, current[ pdgCode: %i, status: %i, primary: %i ], mother[ pdgCode: %i, status: %i, primary: %i ]",
-      //      pdgCode,
-      //      mcParticle.pdgCode(), mcParticle.getGenStatusCode(), mcParticle.isPhysicalPrimary(),
-      //      (*mother).pdgCode(), (*mother).getGenStatusCode(), (*mother).isPhysicalPrimary());
-
-      if ((*mother).pdgCode() == pdgCode || (checkAntiParticle && (*mother).pdgCode() == -pdgCode)) {
-        return true;
-      }
-      if (checkForMother(*mother, pdgCode, checkAntiParticle)) {
-        return true;
-      }
-      mother++;
-    }
-    return false;
-  }
   // check if particle has associated mother in parent tree
   // includes associated particle checks
   bool checkForAssocDecay(auto const& mcParticle, AssocType const assocType)
@@ -834,27 +808,6 @@ struct HadronPhotonCorrelation {
     }
     return true;
   }
-
-  // checks if tracks come from photon conversion
-  template <typename T_track>
-  bool isConversionPhoton(T_track const& posTrack, T_track const& negTrack)
-  {
-    // check same mother
-    auto const& posMothers = posTrack.mcParticle().template mothers_as<aod::JetParticles>();
-    auto const& negMothers = negTrack.mcParticle().template mothers_as<aod::JetParticles>();
-    // if (posMothers.size() != 1 || negMothers.size() != 1) {
-    //   return false;
-    // }
-    if (posMothers.begin()->globalIndex() != negMothers.begin()->globalIndex()) {
-      return false;
-    }
-    // check photon
-    if (posMothers.begin()->pdgCode() != PDG_t::kGamma) {
-      return false;
-    }
-
-    return true;
-  };
 
   // assocType dependent checks ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -2024,10 +1977,10 @@ struct HadronPhotonCorrelation {
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
   void fillTruthLevelsMcRecoStd(auto& histFillInfo, auto const& collision, auto const& associated) {
     // photon impurity
-    if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      PhotonImpurity const photonImpurity = static_cast<PhotonImpurity>(associated.impurityPhotonPcm());
+    if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::PhotonPcm) {
+      PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPhotonPcm());
       histos.fill(HIST("mc/plain/h3_ptTrigPtAssocCategory_recoImpurities_photonPcm"),
-                  collision.ptMax(), associated.pt(), binValuePi0Impurities(photonImpurity));
+                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity));
     }
     // collision association
     if (!checkTruthLevelReco<TruthLevel::RecoAssocEv, AssocTypeV>(associated)) {
@@ -2174,10 +2127,10 @@ struct HadronPhotonCorrelation {
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
   void fillTruthLevelsMcRecoPhotonPcmPair(auto& histFillInfo, auto const& collision, auto const& associated) {
     // pi0 impurity
-    if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
-      PhotonImpurity const photonImpurity = static_cast<PhotonImpurity>(associated.impurityPi0Pcm());
+    if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::Pi0Pcm) {
+      PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPi0Pcm());
       histos.fill(HIST("mc/plain/h3_ptTrigPtAssocCategory_pseudoRecoImpurities_pi0Pcm"),
-                  collision.ptMax(), associated.pt(), binValuePi0Impurities(photonImpurity));
+                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity));
     }
     // collision association
     if (!checkTruthLevelReco<TruthLevel::PseudoRecoAssocEv, AssocTypeV>(associated)) {
@@ -2201,7 +2154,7 @@ struct HadronPhotonCorrelation {
       // pseudo yield
 
       // mgg distribution
-      if constexpr (HistFillModeV == HistFillMode::PlainPt) {
+      if constexpr (HistFillModeV == HistFillMode::Plain) {
         histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm"),
                   histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
@@ -2222,7 +2175,7 @@ struct HadronPhotonCorrelation {
       // pseudo yield
 
       // mgg distribution
-      if constexpr (HistFillModeV == HistFillMode::PlainPt) {
+      if constexpr (HistFillModeV == HistFillMode::Plain) {
         histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPcm"),
                   histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {

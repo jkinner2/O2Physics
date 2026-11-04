@@ -245,7 +245,7 @@ struct HadronPhotonProducer {
 
   // check if particle has mother in parent tree
   // returns optional pt of mother
-  std::optional<double> checkForMother(auto const& mcParticle, int const pdgCode, bool const checkAntiParticle)
+  std::optional<double> checkForMother(auto const& mcParticle, int const pdgCode, bool const checkAntiParticle, bool const includePreHadronisation = true)
   {
     if (!mcParticle.has_mothers()) {
       return std::nullopt;
@@ -254,16 +254,14 @@ struct HadronPhotonProducer {
     auto mother = mothers.begin();
     auto motherEnd = mothers.end();
     while (mother != motherEnd) {
-
-      // LOGF(info, "searchPdgCode: %i, current[ pdgCode: %i, status: %i, primary: %i ], mother[ pdgCode: %i, status: %i, primary: %i ]",
-      //      pdgCode,
-      //      mcParticle.pdgCode(), mcParticle.getGenStatusCode(), mcParticle.isPhysicalPrimary(),
-      //      (*mother).pdgCode(), (*mother).getGenStatusCode(), (*mother).isPhysicalPrimary());
-
+      // optional exclude pre-hadonisation
+      if (!includePreHadronisation && std::abs((*mother).getGenStatusCode()) < 80) {
+        return std::nullopt;
+      }
       if ((*mother).pdgCode() == pdgCode || (checkAntiParticle && (*mother).pdgCode() == -pdgCode)) {
         return (*mother).pt();
       }
-      if (auto const ptMother = checkForMother(*mother, pdgCode, checkAntiParticle)) {
+      if (auto const ptMother = checkForMother(*mother, pdgCode, checkAntiParticle, includePreHadronisation)) {
         return ptMother;
       }
       mother++;
@@ -366,17 +364,17 @@ struct HadronPhotonProducer {
       if (!isPhoton) {
         impurityInfo.impurity = PhotonImpurity::MisId;
       } else {
-        if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Short, true)) {
+        if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Short, true, false)) {
           impurityInfo.impurity = PhotonImpurity::K0Short;
           impurityInfo.ptTrueOrigin = *ptMother;
-        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Long, true)) {
+        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kK0Long, true, false)) {
           impurityInfo.impurity = PhotonImpurity::K0Long;
           impurityInfo.ptTrueOrigin = *ptMother;
-        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kLambda0, true)) {
+        } else if (auto const ptMother = checkForMother(*(photons.begin()), PDG_t::kLambda0, true, false)) {
           impurityInfo.impurity = PhotonImpurity::Lambda0;
           impurityInfo.ptTrueOrigin = *ptMother;
         } else {
-        impurityInfo.impurity = PhotonImpurity::Other;
+          impurityInfo.impurity = PhotonImpurity::Other;
         }
       }
       return {truthLevelInfo, impurityInfo};
@@ -423,13 +421,13 @@ struct HadronPhotonProducer {
     if (!isDecayPrimary(*(mothersOfPhoton.begin()))) {
       truthLevelInfo.truthLevel = TruthLevel::PseudoRecoAssocEv;
       if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
-        if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Short, true)) {
+        if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Short, true, false)) {
           impurityInfo.impurity = PhotonImpurity::K0Short;
           impurityInfo.ptTrueOrigin = *ptMother;
-        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Long, true)) {
+        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kK0Long, true, false)) {
           impurityInfo.impurity = PhotonImpurity::K0Long;
           impurityInfo.ptTrueOrigin = *ptMother;
-        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kLambda0, true)) {
+        } else if (auto const ptMother = checkForMother(*(photons1.begin()), PDG_t::kLambda0, true, false)) {
           impurityInfo.impurity = PhotonImpurity::Lambda0;
           impurityInfo.ptTrueOrigin = *ptMother;
         } else {
