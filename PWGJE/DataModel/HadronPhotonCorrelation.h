@@ -75,7 +75,7 @@ enum class PhotonImpurity : int {
   Lambda0 = 5,
   Other = 6
 };
-constexpr double binValuePi0Impurities(PhotonImpurity const impurity)
+constexpr double binValuePhotonImpurity(PhotonImpurity const impurity)
 {
   return static_cast<int>(impurity) + 0.5;
 }
