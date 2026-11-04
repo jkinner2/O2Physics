@@ -255,7 +255,7 @@ struct HadronPhotonProducer {
     auto motherEnd = mothers.end();
     while (mother != motherEnd) {
       // optional exclude pre-hadonisation
-      if (!includePreHadronisation && std::abs((*mother).getGenStatusCode()) < 80) {
+      if (!includePreHadronisation && (*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < 80) {
         return std::nullopt;
       }
       if ((*mother).pdgCode() == pdgCode || (checkAntiParticle && (*mother).pdgCode() == -pdgCode)) {

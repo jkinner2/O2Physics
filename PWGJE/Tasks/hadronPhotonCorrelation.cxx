@@ -704,7 +704,7 @@ struct HadronPhotonCorrelation {
     auto motherEnd = mothers.end();
     while (mother != motherEnd) {
       // exclude pre-hadonisation
-      if (std::abs((*mother).getGenStatusCode()) < 80) {
+      if ((*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < 80) {
         return false;
       }
       // check valid associated particle
@@ -1022,6 +1022,10 @@ struct HadronPhotonCorrelation {
 
   double getMcK0sPtScaling (double const ptTrue) {
     return 66; // work in progress
+  }
+
+  double getMcAssocPtScaling(auto const& associated) {
+    return 69; // work in progress
   }
 
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
