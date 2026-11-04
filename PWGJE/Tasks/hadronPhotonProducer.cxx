@@ -95,7 +95,7 @@ struct HadronPhotonProducer {
   Configurable<std::string> eventSelections{"eventSelections", "sel8", "JE framework - event selection"};
   Configurable<bool> skipMBGapEvents{"skipMBGapEvents", true, "skip MB gap events"};
   Configurable<bool> applyRctSelection{"applyRctSelection", true, "apply RCT selection"};
-  Configurable<std::string> rctLabel{"rctLabel", "CBT_hadronPid", "RCT selection label"};
+  Configurable<std::string> rctLabel{"rctLabel", "CBT_hadronPID", "RCT selection label"};
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
 
@@ -447,6 +447,7 @@ struct HadronPhotonProducer {
   // other ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   // mc split event selection based in the thrid decimal of mc-true posZ
+  // returns reco value in case of no mc match
   int getThirdDecimalTruePosZ(auto const& collision)
   {
     double absPosZ;
@@ -454,7 +455,7 @@ struct HadronPhotonProducer {
     // get third decimal
     if constexpr (IsCollisionMCD<decltype(collision)>) {
       if (!collision.has_mcCollision()) {
-        return -1;
+        absPosZ = std::abs(collision.posZ());
       }
       absPosZ = std::abs(collision.template mcCollision_as<aod::JetMcCollisions>().posZ());
     } else if constexpr (IsMcCollision<decltype(collision)>) {
@@ -512,7 +513,7 @@ struct HadronPhotonProducer {
 
     for (auto const& collision : collisions) {
       // event selection
-      bool isSelectedEvent = checkEventSelection(collision);
+      bool const isSelectedEvent = checkEventSelection(collision);
 
       // group collision
       auto const tracksThisEvent = tracks.sliceBy(perColTracks, collision.globalIndex());
@@ -749,7 +750,7 @@ struct HadronPhotonProducer {
 
         // photonPcm info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcm"), v0Photon.pt(), v0Photon.phi(), v0Photon.eta());
-        tableProduction.photonPcm(v0Photon.collisionId(), intersectTriggerIds,
+        tableProduction.photonPcm(collision.globalIndex(), intersectTriggerIds,
                                   v0Photon.pt(), v0Photon.phi(), v0Photon.eta(),
                                   static_cast<int>(truthLevelInfoPhotonPcm.truthLevel), truthLevelInfoPhotonPcm.ptTruePure,
                                   static_cast<int>(impurityInfoPhotonPcm.impurity), impurityInfoPhotonPcm.ptTrueOrigin);
@@ -812,7 +813,7 @@ struct HadronPhotonProducer {
 
         // photonPcmPair info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcmPair"), p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta());
-        tableProduction.photonPcmPair(v0Photon1.collisionId(), intersectTriggerIds,
+        tableProduction.photonPcmPair(collision.globalIndex(), intersectTriggerIds,
                                       p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta(), p4V0PcmPair.M(),
                                       static_cast<int>(truthLevelInfoPi0Pcm.truthLevel), static_cast<int>(truthLevelInfoEtaPcm.truthLevel), ptTruePurePhotonPcmPair,
                                       static_cast<int>(photonImpurityInfoPi0Pcm.impurity), photonImpurityInfoPi0Pcm.ptTrueOrigin);
@@ -840,6 +841,9 @@ struct HadronPhotonProducer {
   void processMcCorrTables(aod::JetMcCollisions const& mcCollisions, aod::JetParticles const& mcParticles)
   {
     for (auto const& mcCollision : mcCollisions) {
+      // event selection true
+      bool const isSelectedEvent = !skipMBGapEvents || mcCollision.getSubGeneratorId() == jetderiveddatautilities::JCollisionSubGeneratorId::mbGap;
+
       // group collision
       auto const mcParticlesThisEvent = mcParticles.sliceBy(perColMcParticles, mcCollision.globalIndex());
 
@@ -899,7 +903,7 @@ struct HadronPhotonProducer {
 
       // collision info
       histos.fill(HIST("true/h2_zPvMult"), mcCollision.posZ(), nCharged);
-      tableProduction.mcCollisionExtraCorr(thirdDecimalTruePosZ, isTriggerEvent, maxChargedPt, nCharged);
+      tableProduction.mcCollisionExtraCorr(isSelectedEvent, thirdDecimalTruePosZ, isTriggerEvent, maxChargedPt, nCharged);
     }
   }
   PROCESS_SWITCH(HadronPhotonProducer, processMcCorrTables, "process table production (mc)", false);

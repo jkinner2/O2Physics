@@ -92,6 +92,7 @@ namespace o2::aod
 namespace corr_common
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetMcCollision, jetMcCollision, int, JMcCollisions, "");
+DECLARE_SOA_COLUMN(SelEv, selEv, bool);
 DECLARE_SOA_COLUMN(Pt, pt, float);
 DECLARE_SOA_COLUMN(PtTruePure, ptTruePure, float);
 DECLARE_SOA_COLUMN(PtTrueOrigin, ptTrueOrigin, float); // and the blind forest
@@ -106,7 +107,6 @@ namespace corr_collision
 {
 // plain jet collision column for derived data
 DECLARE_SOA_COLUMN(JetCollisionId, jetCollisionId, int);
-DECLARE_SOA_COLUMN(SelEv, selEv, bool);
 DECLARE_SOA_COLUMN(ThirdDecimalTruePosZ, thirdDecimalTruePosZ, int);
 DECLARE_SOA_COLUMN(TrigEv, trigEv, bool);
 DECLARE_SOA_COLUMN(PtMax, ptMax, float);
@@ -115,7 +115,7 @@ DECLARE_SOA_COLUMN(NGlobalTracks, nGlobalTracks, int);
 } // namespace corr_collision
 DECLARE_SOA_TABLE(CorrCollisions, "AOD", "CORRCOLLISION",
                   o2::soa::Index<>,
-                  corr_collision::SelEv, corr_collision::ThirdDecimalTruePosZ, corr_collision::TrigEv, corr_collision::PtMax, corr_collision::PosZ, corr_collision::NGlobalTracks);
+                  corr_common::SelEv, corr_collision::ThirdDecimalTruePosZ, corr_collision::TrigEv, corr_collision::PtMax, corr_collision::PosZ, corr_collision::NGlobalTracks);
 DECLARE_SOA_TABLE(CorrCollisionIds, "AOD", "CORRCOLLISIONID",
                   corr_collision::JetCollisionId);
 DECLARE_SOA_TABLE(CorrCollisionMcIds, "AOD", "CORRCOLLISIONMCID",
@@ -224,7 +224,7 @@ DECLARE_SOA_COLUMN(PtMax, ptMax, float);
 DECLARE_SOA_COLUMN(NChargedInEtaRange, nChargedInEtaRange, int);
 } // namespace mc_collision_extra_corr
 DECLARE_SOA_TABLE(McCollisionsExtraCorr, "AOD", "MCCOLLISIONEXTRACORR",
-                  mc_collision_extra_corr::ThirdDecimalTruePosZ, mc_collision_extra_corr::TrigEv, mc_collision_extra_corr::PtMax, mc_collision_extra_corr::NChargedInEtaRange);
+                  corr_common::SelEv, mc_collision_extra_corr::ThirdDecimalTruePosZ, mc_collision_extra_corr::TrigEv, mc_collision_extra_corr::PtMax, mc_collision_extra_corr::NChargedInEtaRange);
 
 // trigger
 namespace true_trigger
