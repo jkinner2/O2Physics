@@ -492,7 +492,7 @@ struct HadronPhotonCorrelation {
 
     // main info for assocType (spectra and correlation)
     auto const addMainAssocHists =
-      [&](std::string const& recoOrMc, std::string const& nameTruthLevel, std::string const& nameAssoc, bool const resolvedInfo) {
+      [&](std::string const& recoOrMc, std::string const& nameTruthLevel, std::string const& nameAssoc, bool const resolvedInfo, bool const trueColInfo) {
         if (resolvedInfo) {
           histos.add(std::format("{}/plain/h4_ptTrigPtAssocPhiEta_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h4_ptTrigPtAssocPhiEta_{}_{}", nameTruthLevel, nameAssoc).data(),
                      kTHnSparseD, {axisPtTrig, axisPtAssoc, axisPhi, axisEta}, true);
@@ -502,10 +502,17 @@ struct HadronPhotonCorrelation {
           histos.add(std::format("{}/plain/h2_ptTrigPtAssoc_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h2_ptTrigPtAssoc_{}_{}", nameTruthLevel, nameAssoc).data(),
                      kTHnSparseD, {axisPtTrig, axisPtAssoc}, true);
         }
-        histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
-                   kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
-        histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
-                   kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
+        if (trueColInfo) {
+          histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
+                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
+          histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
+                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
+        } else {
+          histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
+                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue}, true);
+          histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
+                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue}, true);
+        }
       };
 
     // reco info
@@ -515,10 +522,10 @@ struct HadronPhotonCorrelation {
     // reco (correlation) analysis
     histos.add("reco/corr/h3_ptPhiEta_trig", "h3_ptPhiEta_trig", kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
     for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photonPcm"}) {
-      addMainAssocHists("reco", "reco", nameAssoc, true);
+      addMainAssocHists("reco", "reco", nameAssoc, true, false);
     }
     for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0PcmPeak", "pi0PcmSide", "etaPcmPeak", "etaPcmSide"}) {
-      addMainAssocHists("reco", "reco", nameAssoc, false);
+      addMainAssocHists("reco", "reco", nameAssoc, false, false);
     }
 
     // photonPcm pairs
@@ -550,35 +557,35 @@ struct HadronPhotonCorrelation {
       histos.add(std::format("mc/corr/h3_ptPhiEta_trig_{}", nameTruthLevel).data(), std::format("h3_ptPhiEta_trig_{}", nameTruthLevel).data(),
                  kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
       for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photon"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true);
+        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true, true);
       }
       for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0", "eta"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false);
+        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, true);
       }
     }
     // extra truthLevels for photonPcmPair
     for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"trueDecaySelfTrig", "trueMeasDecay", "trueGeoAcc"}) {
       for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0", "eta"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false);
+        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, true);
       }
     }
     // assocTypes just on true level
     for (std::string const& nameAssoc : std::initializer_list<std::string>{"photonDecay", "photonDirect", "photonPi0", "photonEta",
                                                                            "omega", "photonOmega", "etaPrime", "photonEtaPrime", "photonOtherMother"}) {
-      addMainAssocHists("mc", "true", nameAssoc, false);
+      addMainAssocHists("mc", "true", nameAssoc, false, true);
     }
 
     // reco++ (MC info)
     // std assoc
     for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"recoAssocEv", "recoPure", "recoPureTruePtAssoc"}) {
       for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photonPcm"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true);
+        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true, false);
       }
     }
     // photonPcmPair assoc
     for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"pseudoReco", "pseudoRecoAssocEv", "pseudoRecoPure", "pseudoRecoPureTruePtAssoc"}) {
       for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0Pcm", "etaPcm"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false);
+        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, false);
       }
     }
     // impurity details
@@ -643,12 +650,7 @@ struct HadronPhotonCorrelation {
   // total event selection (basic selections from producer and analysis level selections)
   bool totalEvSel(auto const& collision)
   {
-    bool isSelEv = true;
-
-    if constexpr (requires { collision.selEv(); }) {
-      isSelEv = collision.selEv();
-    }
-    return isSelEv && checkSplitMcEventSelection(collision);
+    return collision.selEv() && checkSplitMcEventSelection(collision);
   }
 
   // checks if mcParticle is charged
@@ -738,7 +740,6 @@ struct HadronPhotonCorrelation {
         while (trigger != triggerEnd) {
           if constexpr (TruthLevelV == TruthLevel::TrueAssocEvRecoPtTrig) {
             if (!isMcMatchedTrigger(*trigger)) {
-              histos.fill(HIST("mc/info/h1_pt_noMatch_trigger"), (*trigger).pt());
               return false;
             }
             if (!checkForAssocDecay((*trigger).template jetTrack_as<aod::JetTracksMCD>().mcParticle(), assocType)) {
@@ -761,7 +762,7 @@ struct HadronPhotonCorrelation {
   }
   // recursive helper to exclude loopDeLoops
   template <typename T_mcParticle>
-  bool isDecayToTrigger(T_mcParticle const& mcParticle, T_mcParticle const& triggerParticle, std::unordered_set<int64_t>& visited)
+  bool producesTrigger(T_mcParticle const& mcParticle, T_mcParticle const& triggerParticle, std::unordered_set<int64_t>& visited)
   {
     if (!visited.insert(mcParticle.globalIndex()).second) {
       return false;
@@ -776,7 +777,7 @@ struct HadronPhotonCorrelation {
       if ((*daughter).globalIndex() == triggerParticle.globalIndex()) {
         return true;
       }
-      if (isDecayToTrigger(*daughter, triggerParticle, visited)) {
+      if (producesTrigger(*daughter, triggerParticle, visited)) {
         return true;
       }
       daughter++;
@@ -785,10 +786,10 @@ struct HadronPhotonCorrelation {
   }
   // check if particle has trigger in daughter tree
   template <typename T_mcParticle>
-  bool isDecayToTrigger(T_mcParticle const& mcParticle, T_mcParticle const& triggerParticle)
+  bool producesTrigger(T_mcParticle const& mcParticle, T_mcParticle const& triggerParticle)
   {
     std::unordered_set<int64_t> visited;
-    return isDecayToTrigger(mcParticle, triggerParticle, visited);
+    return producesTrigger(mcParticle, triggerParticle, visited);
   }
 
   // checks if daughters are in acceptance
@@ -1005,16 +1006,40 @@ struct HadronPhotonCorrelation {
 
   template <AssocType AssocTypeV>
   double getMcAssocPtScaling (double const ptTrue) {
+    if constexpr (AssocTypeV == AssocType::PhotonPcm) {
+      if (applyPhotonPtScaling) {
+        return 64;
+      } else {
+        return 1;
+      }
+    } else if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
+      if (applyPi0PtScaling) {
+        return 67;
+      } else {
+        return 1;
+      }
+    } else if constexpr (AssocTypeV == AssocType::EtaPcm) {
+      if (applyEtaPtScaling) {
+        return 68;
+      } else {
+        return 1;
+      }
+    } else {
+      static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
+    }
+  }
+  template <AssocType AssocTypeV>
+  double getMcAssocPtScaling(auto const& associated) {
     if constexpr (AssocTypeV == AssocType::Hadron) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      return 64; // work in progress
+      return 63;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair ||
                          AssocTypeV == AssocType::Pi0PcmPeak || AssocTypeV == AssocType::Pi0PcmSide || AssocTypeV == AssocType::Pi0Pcm ||
                          AssocTypeV == AssocType::EtaPcmPeak || AssocTypeV == AssocType::EtaPcmSide || AssocTypeV == AssocType::EtaPcm) {
-      return 67; // work in progress
+      return 69;
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
@@ -1023,10 +1048,10 @@ struct HadronPhotonCorrelation {
   double getMcK0sPtScaling (double const ptTrue) {
     return 66; // work in progress
   }
-
-  double getMcAssocPtScaling(auto const& associated) {
-    return 69; // work in progress
+  double getMcK0sPtScaling (auto const& associated) {
+    return 66; // work in progress
   }
+
 
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
   double getDeltaPhi(double const phi1, double const phi2)
@@ -1765,7 +1790,7 @@ struct HadronPhotonCorrelation {
         auto const& triggerParticle = trueTrigger.jetMcParticle();
         // self trigger info for decaying particles
         auto const isDecaySelfTrig = [this, &assocParticle, &triggerParticle]() {
-          return isDecayToTrigger(assocParticle, triggerParticle);
+          return producesTrigger(assocParticle, triggerParticle);
         };
         // exclude self correlation
         if (trueTrigger.jetMcParticleId() == assocParticle.globalIndex()) {
@@ -1803,7 +1828,6 @@ struct HadronPhotonCorrelation {
       }
 
       if (!isMcMatchedCollision(collision)) {
-        histos.fill(HIST("mc/info/h1_pt_noMatch_event"), 0.5);
         continue;
       }
 
@@ -1830,7 +1854,7 @@ struct HadronPhotonCorrelation {
         auto const& triggerParticle = trueTrigger.jetMcParticle();
         // self trigger info for decaying particles
         auto const isDecaySelfTrig = [this, &assocParticle, &triggerParticle]() {
-          return isDecayToTrigger(assocParticle, triggerParticle);
+          return producesTrigger(assocParticle, triggerParticle);
         };
         // exclude self correlation
         if (trueTrigger.jetMcParticleId() == assocParticle.globalIndex()) {
@@ -1869,7 +1893,6 @@ struct HadronPhotonCorrelation {
       }
 
       if (!isMcMatchedCollision(collision)) {
-        histos.fill(HIST("mc/info/h1_pt_noMatch_event"), 0.5);
         continue;
       }
 
@@ -1895,13 +1918,12 @@ struct HadronPhotonCorrelation {
 
       auto const funcCorrelation = [this](auto const& mcCollision, auto const& trigger, auto const& assocParticle) {
         if (!isMcMatchedTrigger(trigger)) {
-            histos.fill(HIST("mc/info/h1_pt_noMatch_trigger"), trigger.pt());
          return;
         }
         auto const& triggerParticle = trigger.template jetTrack_as<aod::JetTracksMCD>().mcParticle();
         // self trigger info for decaying particles
         auto const isDecaySelfTrig = [this, &assocParticle, &triggerParticle]() {
-          return isDecayToTrigger(assocParticle, triggerParticle);
+          return producesTrigger(assocParticle, triggerParticle);
         };
         // exclude self correlation
         if (triggerParticle.globalIndex() == assocParticle.globalIndex()) {
