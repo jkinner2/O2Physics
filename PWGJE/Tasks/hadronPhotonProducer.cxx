@@ -456,8 +456,9 @@ struct HadronPhotonProducer {
     if constexpr (IsCollisionMCD<decltype(collision)>) {
       if (!collision.has_mcCollision()) {
         absPosZ = std::abs(collision.posZ());
+      } else {
+        absPosZ = std::abs(collision.template mcCollision_as<aod::JetMcCollisions>().posZ());
       }
-      absPosZ = std::abs(collision.template mcCollision_as<aod::JetMcCollisions>().posZ());
     } else if constexpr (IsMcCollision<decltype(collision)>) {
       absPosZ = std::abs(collision.posZ());
     } else {
@@ -842,7 +843,7 @@ struct HadronPhotonProducer {
   {
     for (auto const& mcCollision : mcCollisions) {
       // event selection true
-      bool const isSelectedEvent = !skipMBGapEvents || mcCollision.getSubGeneratorId() == jetderiveddatautilities::JCollisionSubGeneratorId::mbGap;
+      bool const isSelectedEvent = !skipMBGapEvents || mcCollision.getSubGeneratorId() != jetderiveddatautilities::JCollisionSubGeneratorId::mbGap;
 
       // group collision
       auto const mcParticlesThisEvent = mcParticles.sliceBy(perColMcParticles, mcCollision.globalIndex());
