@@ -1933,7 +1933,7 @@ struct HadronPhotonCorrelation {
         // trigger from conversion leg of the photon (pi0,eta legs handled implicily in isDecaySelfTrig)
         if (assocParticle.pdgCode() == PDG_t::kGamma &&
             triggerParticle.has_mothers() && triggerParticle.mothersIds().front() == assocParticle.globalIndex() &&
-            triggerParticle.getGenStatusCode() == -1 && std::abs(assocParticle.pdgCode()) == PDG_t::kElectron) {
+            triggerParticle.getProcess() == TMCProcess::kPPair) {
           return;
         }
 
