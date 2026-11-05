@@ -502,7 +502,7 @@ struct HadronPhotonCorrelation {
           histos.add(std::format("{}/plain/h2_ptTrigPtAssoc_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h2_ptTrigPtAssoc_{}_{}", nameTruthLevel, nameAssoc).data(),
                      kTHnSparseD, {axisPtTrig, axisPtAssoc}, true);
         }
-        if (trueColInfo) {
+        if (!trueColInfo) {
           histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
                     kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
           histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
@@ -1927,6 +1927,13 @@ struct HadronPhotonCorrelation {
         };
         // exclude self correlation
         if (triggerParticle.globalIndex() == assocParticle.globalIndex()) {
+          return;
+        }
+        // match reco self-correlation exclusions
+        // trigger from conversion leg of the photon (pi0,eta legs handled implicily in isDecaySelfTrig)
+        if (assocParticle.pdgCode() == PDG_t::kGamma &&
+            triggerParticle.has_mothers() && triggerParticle.mothersIds().at(0) == assocParticle.globalIndex() &&
+            triggerParticle.getGenStatusCode() == -1 && std::abs(assocParticle.pdgCode()) == PDG_t::kElectron) {
           return;
         }
 
