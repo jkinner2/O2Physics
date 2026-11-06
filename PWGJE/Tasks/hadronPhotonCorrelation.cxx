@@ -107,17 +107,17 @@ struct HadronPhotonCorrelation {
   Configurable<int> splitMcEvSelect{"splitMcEvSelect", 1, "selected event fraction number in MC (starts at 1) | (select 1 for data)"};
 
   // mc scaling to data
-  // caution: applied to true-level very broadly, full mc-true possibly inconsistent, only use for correcting
+  // caution: applied to true-level very broadly, full mc-true possibly inconsistent (e.g. gammaDir scaled as well), only use for correcting
   Configurable<bool> applyScalingPhotonPt{"applyScalingPhotonPt", false, "apply photon mc scaling factor"};
   Configurable<std::vector<double>> ptRangeScalingPhoton{"ptRangeScalingPhoton", {0.5, 15}, "pt for photon mc scaling factor using tcm, switching to constant outside"};
   Configurable<std::vector<double>> parScalingPhotonPtData{"parScalingPhotonPtData", {}, "tcm params, corrected data, photonPcm"};
   Configurable<std::vector<double>> parScalingPhotonPtMc{"parScalingPhotonPtMc", {}, "tcm params, mc gen, photonPcm"};
   Configurable<bool> applyScalingPi0Pt{"applyScalingPi0Pt", false, "apply pi0 mc scaling factor"};
-  Configurable<std::vector<double>> ptRangeScalingPi0{"ptRangeScalingPi0", {0.5, 10}, "pt for pi0 mc scaling factor using tcm, switching to constant after"};
+  Configurable<std::vector<double>> ptRangeScalingPi0{"ptRangeScalingPi0", {0.5, 10}, "pt for pi0 mc scaling factor using tcm, switching to constant outside"};
   Configurable<std::vector<double>> parScalingPi0PtData{"parScalingPi0PtData", {}, "tcm params, corrected data, pi0Pcm"};
   Configurable<std::vector<double>> parScalingPi0PtMc{"parScalingPi0PtMc", {}, "tcm params, mc gen, pi0Pcm"};
   Configurable<bool> applyScalingEtaPt{"applyScalingEtaPt", false, "apply eta mc scaling factor"};
-  Configurable<std::vector<double>> ptRangeScalingEta{"ptRangeScalingEta", {1.0, 10}, "pt for eta mc scaling factor using tcm, switching to constant after"};
+  Configurable<std::vector<double>> ptRangeScalingEta{"ptRangeScalingEta", {1.0, 10}, "pt for eta mc scaling factor using tcm, switching to constant outside"};
   Configurable<std::vector<double>> parScalingEtaPtData{"parScalingEtaPtData", {}, "tcm params, corrected data, etaPcm"};
   Configurable<std::vector<double>> parScalingEtaPtMc{"parScalingEtaPtMc", {}, "tcm params, mc gen, etaPcm"};
   // scalings and corrections applied to reco
@@ -1030,7 +1030,7 @@ struct HadronPhotonCorrelation {
     return tcmInvariantSoftExp(pt, par) + tcmInvariantHardPower(pt, par + nParSoftExp);
   }
   // tcm function (non-invariant)
-  double tcmParam(double const pt, std::vector<double> const par) {
+  double tcmParam(double const pt, std::vector<double> const& par) {
     return pt * tcmInvariantFit(&pt, par.data());
   }
 
@@ -1067,12 +1067,14 @@ struct HadronPhotonCorrelation {
     if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
+      if (!applyScalingPhotonPt) return 1;
       if (checkTruthLevelReco<TruthLevel::RecoPure, AssocTypeV>(associated)) {
         return getMcAssocPtScalingFromPt<AssocTypeV>(associated.ptTruePure());
       } else {
         return 1;
       }
     } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
+      if (!applyScalingPi0Pt && !applyScalingEtaPt) return 1;
       if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::Pi0Pcm>(associated)) {
         return getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(associated.ptTruePure());
       } else if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::EtaPcm>(associated)) {
@@ -1247,6 +1249,15 @@ struct HadronPhotonCorrelation {
     double const doublePrecisionDeltaCheck = 1e-5;
     if (std::abs(ptTrigMin - configHist.binsPtTrig.value[0]) > doublePrecisionDeltaCheck) {
       throw std::runtime_error("ptTrigMin does not match trigger axis");
+    }
+    if (parScalingPhotonPtData.value.size() != 6, parScalingPhotonPtMc.value.size() != 6) {
+      throw std::runtime_error("wrong number of nc scaling params for photon");
+    }
+    if (parScalingPi0PtData.value.size() != 6, parScalingPi0PtMc.value.size() != 6) {
+      throw std::runtime_error("wrong number of nc scaling params for pi0");
+    }
+    if (parScalingEtaPtData.value.size() != 6, parScalingEtaPtMc.value.size() != 6) {
+      throw std::runtime_error("wrong number of nc scaling params for eta");
     }
 
     // histograms from ccdb
@@ -1536,12 +1547,8 @@ struct HadronPhotonCorrelation {
           continue;
         }
 
-        double const weight = getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm1) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm1) *
-                              getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm2) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm2);
-
         histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"),
-                    p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks(),
-                    weight);
+                    p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
       }
     }
   }
