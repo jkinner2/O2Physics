@@ -1185,13 +1185,13 @@ struct HadronPhotonCorrelation {
   }
 
   // mixing
-  struct ConditionMixRejectNone {
+  struct ConditionMixAcceptAll {
     constexpr bool operator()(auto const&) const
     {
-      return false;
+      return true;
     }
   };
-  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = ConditionMixRejectNone>
+  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = ConditionMixAcceptAll>
   void corrProcessMixing(auto const& collision, auto const& associatedThisEvent,
                          auto const& funcMixing, size_t const nTriggerMixingAt0, T_AssocCondition const& funcConditionAssocOnly = {})
   {
