@@ -600,7 +600,7 @@ struct HadronPhotonProducer {
   }
   PROCESS_SWITCH(HadronPhotonProducer, processMcRecoCollisionTrigger, "process correlation collision_extra and trigger table (reconstructed MC)", false);
 
-  template <typename TrackPidTable>
+  template <typename T_TrackPidTable>
   void fillProcessRecoHadronPipm(auto const& collisions, auto const& tracks)
   {
     for (auto const& collision : collisions) {
@@ -644,7 +644,7 @@ struct HadronPhotonProducer {
         tableProduction.hadronTrackId(track.globalIndex());
 
         // pipm selection
-        auto const& trackPid = track.template track_as<TrackPidTable>();
+        auto const& trackPid = track.template track_as<T_TrackPidTable>();
         if constexpr (requires { trackPid.tofNSigmaPi(); }) {
           if (!checkPipmTPCTOF(trackPid)) {
             continue;

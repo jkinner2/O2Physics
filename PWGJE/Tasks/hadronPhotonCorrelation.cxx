@@ -932,9 +932,9 @@ struct HadronPhotonCorrelation {
   }
 
   // add pmeventId() due to unguarded call in V0PhotonCut.h qa; selection unaffected
-  template <typename V0PhotonType>
-  struct V0PhotonNoEvent : V0PhotonType {
-    explicit V0PhotonNoEvent(V0PhotonType const& v0PhotonType) : V0PhotonType(v0PhotonType) {}
+  template <typename T_V0PhotonType>
+  struct V0PhotonNoEvent : T_V0PhotonType {
+    explicit V0PhotonNoEvent(T_V0PhotonType const& v0PhotonType) : T_V0PhotonType(v0PhotonType) {}
     [[nodiscard]] int pmeventId() const { return -1; }
   };
   bool isSelectedV0Photon(auto const& v0Photon)
@@ -1185,10 +1185,15 @@ struct HadronPhotonCorrelation {
   }
 
   // mixing
-  template <TriggerMemoryMode TriggerMemoryModeV>
+  struct ConditionMixRejectNone {
+    constexpr bool operator()(auto const&) const
+    {
+      return false;
+    }
+  };
+  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = ConditionMixRejectNone>
   void corrProcessMixing(auto const& collision, auto const& associatedThisEvent,
-                         auto const& funcMixing,
-                         size_t const nTriggerMixingAt0)
+                         auto const& funcMixing, size_t const nTriggerMixingAt0, T_AssocCondition const& funcConditionAssocOnly = {})
   {
     size_t triggerMemoryBinSizeMin = 0;
 
@@ -1219,7 +1224,10 @@ struct HadronPhotonCorrelation {
     const size_t iStartTrigger = randomIntInInterval(0, config.iTriggerStartFraction.value * nSavedTriggers);
     // associated loop
     for (auto const& associated : associatedThisEvent) {
-      // trigger numbers
+      if (!funcConditionAssocOnly(associated)) {
+        continue;
+      }
+      // trigger settings
       const size_t nTriggerMixing = nMixingPtPowerScaling(nTriggerMixingAt0, associated.pt());
       const size_t mixUpToTriggerN = std::min(nSavedTriggers, iStartTrigger + nTriggerMixing);
       const float perTriggerWeight = 1. / (mixUpToTriggerN - iStartTrigger); // mixUpToTriggerN <= iStartTrigger caught by break statement of loop
@@ -1254,13 +1262,13 @@ struct HadronPhotonCorrelation {
       throw std::runtime_error("ptTrigMin does not match trigger axis");
     }
     if (config.applyScalingPhotonPt.value && (config.parScalingPhotonPtData.value.size() != 6 || config.parScalingPhotonPtMc.value.size() != 6)) {
-      throw std::runtime_error("wrong number of nc scaling params for photon");
+      throw std::runtime_error("wrong number of mc scaling params for photon");
     }
     if (config.applyScalingPi0Pt.value && (config.parScalingPi0PtData.value.size() != 6 || config.parScalingPi0PtMc.value.size() != 6)) {
-      throw std::runtime_error("wrong number of nc scaling params for pi0");
+      throw std::runtime_error("wrong number of mc scaling params for pi0");
     }
     if (config.applyScalingEtaPt.value && (config.parScalingEtaPtData.value.size() != 6 || config.parScalingEtaPtMc.value.size() != 6)) {
-      throw std::runtime_error("wrong number of nc scaling params for eta");
+      throw std::runtime_error("wrong number of mc scaling params for eta");
     }
 
     // histograms from ccdb
@@ -1364,18 +1372,17 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
+      auto const conditionMixAssocOnly = [this](auto const& associated) {
         // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
-
+        return isSelectedAssoc<AssocTypeV>(associated);
+      };
+      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillHistMain<HistPathsRecoStd, HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
     }
   }
 
@@ -1503,18 +1510,17 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
+      auto const conditionMixAssocOnly = [this](auto const& associated) {
         // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
-
+        return isSelectedAssoc<AssocType::PhotonPcmPair>(associated);
+      };
+      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
@@ -1704,7 +1710,7 @@ struct HadronPhotonCorrelation {
   }();
 
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([](){})>
-  void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = T_DecaySelfTrigFunc{}) {
+  void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = {}) {
     // main eta cut
     if (std::abs(assocParticle.eta()) > config.absEtaMax.value) {
       return;
@@ -2189,18 +2195,17 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
+      auto const conditionMixAssocOnly = [this](auto const& associated) {
         // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
-
+        return isSelectedAssoc<AssocTypeV>(associated);
+      };
+      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
     }
   }
 
@@ -2375,18 +2380,17 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
+      auto const conditionMixAssocOnly = [this](auto const& associated) {
         // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
-
+        return isSelectedAssoc<AssocType::PhotonPcmPair>(associated);
+      };
+      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
     }
   }
 
