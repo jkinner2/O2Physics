@@ -49,6 +49,7 @@
 #include <Math/Vector4D.h> // IWYU pragma: keep (do not replace with Math/Vector4Dfwd.h)
 #include <Math/Vector4Dfwd.h>
 #include <TH1.h>
+#include <TMCProcess.h>
 #include <TPDGCode.h>
 
 #include <algorithm>
@@ -93,7 +94,7 @@ struct HadronPhotonCorrelation {
   // configurables
 
   // general (kenobi)
-  Configurable<std::string> pathCcdbCorrection{"pathCcdbCorrection", "Users/j/jkinner/correction/set_in_config", "base path to the ccdb corrections"};
+  Configurable<std::string> pathCcdbAnalysis{"pathCcdbAnalysis", "Users/j/jkinner/analysis/set_in_config", "base path to the ccdb for analysis objects"};
   Configurable<std::string> urlCcdb{"urlCcdb", "http://alice-ccdb.cern.ch", "url of the ccdb repository"};
   Configurable<int64_t> noLaterThanCcdbConfig{"noLaterThanCcdbConfig", -1, "latest acceptable timestamp of creation for the object (-1 for task start time)"};
 
@@ -105,12 +106,24 @@ struct HadronPhotonCorrelation {
   Configurable<int> splitMcEvN{"splitMcEvN", 1, "number of event fractions for selection in MC (max 10) | (select 1 for data)"};
   Configurable<int> splitMcEvSelect{"splitMcEvSelect", 1, "selected event fraction number in MC (starts at 1) | (select 1 for data)"};
 
-  Configurable<bool> applyPhotonPtScaling{"applyPhotonPtScaling", false, "apply photon mc scaling factor"};
-  Configurable<bool> applyPi0PtScaling{"applyPi0PtScaling", false, "apply pi0 mc scaling factor"};
-  Configurable<bool> applyEtaPtScaling{"applyEtaPtScaling", false, "apply eta mc scaling factor"};
-  Configurable<bool> applyK0sPtScaling{"applyK0sPtScaling", false, "apply K0s mc scaling factor"};
-
+  // mc scaling to data
+  // caution: applied to true-level very broadly, full mc-true possibly inconsistent, only use for correcting
+  Configurable<bool> applyScalingPhotonPt{"applyScalingPhotonPt", false, "apply photon mc scaling factor"};
+  Configurable<std::vector<double>> ptRangeScalingPhoton{"ptRangeScalingPhoton", {0.5, 15}, "pt for photon mc scaling factor using tcm, switching to constant outside"};
+  Configurable<std::vector<double>> parScalingPhotonPtData{"parScalingPhotonPtData", {}, "tcm params, corrected data, photonPcm"};
+  Configurable<std::vector<double>> parScalingPhotonPtMc{"parScalingPhotonPtMc", {}, "tcm params, mc gen, photonPcm"};
+  Configurable<bool> applyScalingPi0Pt{"applyScalingPi0Pt", false, "apply pi0 mc scaling factor"};
+  Configurable<std::vector<double>> ptRangeScalingPi0{"ptRangeScalingPi0", {0.5, 10}, "pt for pi0 mc scaling factor using tcm, switching to constant after"};
+  Configurable<std::vector<double>> parScalingPi0PtData{"parScalingPi0PtData", {}, "tcm params, corrected data, pi0Pcm"};
+  Configurable<std::vector<double>> parScalingPi0PtMc{"parScalingPi0PtMc", {}, "tcm params, mc gen, pi0Pcm"};
+  Configurable<bool> applyScalingEtaPt{"applyScalingEtaPt", false, "apply eta mc scaling factor"};
+  Configurable<std::vector<double>> ptRangeScalingEta{"ptRangeScalingEta", {1.0, 10}, "pt for eta mc scaling factor using tcm, switching to constant after"};
+  Configurable<std::vector<double>> parScalingEtaPtData{"parScalingEtaPtData", {}, "tcm params, corrected data, etaPcm"};
+  Configurable<std::vector<double>> parScalingEtaPtMc{"parScalingEtaPtMc", {}, "tcm params, mc gen, etaPcm"};
+  // scalings and corrections applied to reco
+  Configurable<bool> applyScalingK0ShortPt{"applyScalingK0ShortPt", false, "apply K0Short mc scaling factor"};
   Configurable<bool> applyTriggerPtCorrection{"applyTriggerPtCorrection", false, "whether to apply on-the-fly total correction factor for triggers"};
+
   Configurable<bool> doTrigEvMixing{"doTrigEvMixing", false, "whether to use trigger events for trigger mixing"};
 
   Configurable<int> nTriggerSavedForMixing{"nTriggerSavedForMixing", 8192, "number of triggers that are saved for mixing with other events"};
@@ -299,6 +312,7 @@ struct HadronPhotonCorrelation {
 
   // correction histograms
   TH1D* h1PtCorrectionTrigger = nullptr;
+  TH1D* h1PtScalingK0Short = nullptr;
 
   // mixing trigger memory
   struct MixingTrigger {
@@ -452,16 +466,27 @@ struct HadronPhotonCorrelation {
   void initCcdbHistograms(int64_t const noLaterThanCcdb)
   {
     // trigger
-    h1PtCorrectionTrigger = nullptr;
     if (applyTriggerPtCorrection) {
-      h1PtCorrectionTrigger = ccdb->getForTimeStamp<TH1D>(pathCcdbCorrection.value + "/trigger", noLaterThanCcdb);
+      h1PtCorrectionTrigger = ccdb->getForTimeStamp<TH1D>(pathCcdbAnalysis.value + "/correction/trigger", noLaterThanCcdb);
 
-      const double* correctionBinsTrigger = h1PtCorrectionTrigger->GetXaxis()->GetXbins()->GetArray();
-      const AxisSpec axisPtCorrectionTrigger{std::vector<double>(correctionBinsTrigger, correctionBinsTrigger + h1PtCorrectionTrigger->GetNbinsX() + 1), "#it{p}_{T}"};
-      histos.add("usedCorrection/h1_pt_correction_trigger_ccdb", "h1_pt_correction_trigger_ccdb", kTH1D, {axisPtCorrectionTrigger}, true);
+      const double* bins = h1PtCorrectionTrigger->GetXaxis()->GetXbins()->GetArray();
+      const AxisSpec axis{std::vector<double>(bins, bins + h1PtCorrectionTrigger->GetNbinsX() + 1), "#it{p}_{T}"};
+      histos.add("usedObjectsCcdb/h1_pt_correction_trigger_ccdb", "h1_pt_correction_trigger_ccdb", kTH1D, {axis}, true);
       for (int iBin = 1; iBin <= h1PtCorrectionTrigger->GetNbinsX(); iBin++) {
-        histos.get<TH1>(HIST("usedCorrection/h1_pt_correction_trigger_ccdb"))->SetBinContent(iBin, h1PtCorrectionTrigger->GetBinContent(iBin));
-        histos.get<TH1>(HIST("usedCorrection/h1_pt_correction_trigger_ccdb"))->SetBinError(iBin, h1PtCorrectionTrigger->GetBinError(iBin));
+        histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_correction_trigger_ccdb"))->SetBinContent(iBin, h1PtCorrectionTrigger->GetBinContent(iBin));
+        histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_correction_trigger_ccdb"))->SetBinError(iBin, h1PtCorrectionTrigger->GetBinError(iBin));
+      }
+    }
+    // K0Short
+    if (applyScalingK0ShortPt) {
+      h1PtScalingK0Short = ccdb->getForTimeStamp<TH1D>(pathCcdbAnalysis.value + "/scaling/K0Short", noLaterThanCcdb);
+
+      const double* bins = h1PtScalingK0Short->GetXaxis()->GetXbins()->GetArray();
+      const AxisSpec axis{std::vector<double>(bins, bins + h1PtScalingK0Short->GetNbinsX() + 1), "#it{p}_{T}"};
+      histos.add("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb", "h1_pt_scaling_K0Short_ccdb", kTH1D, {axis}, true);
+      for (int iBin = 1; iBin <= h1PtScalingK0Short->GetNbinsX(); iBin++) {
+        histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb"))->SetBinContent(iBin, h1PtScalingK0Short->GetBinContent(iBin));
+        histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb"))->SetBinError(iBin, h1PtScalingK0Short->GetBinError(iBin));
       }
     }
   }
@@ -838,8 +863,7 @@ struct HadronPhotonCorrelation {
       TruthLevel::Reco,
       TruthLevel::RecoMcMatched,
       TruthLevel::RecoAssocEv,
-      TruthLevel::RecoPure,
-      TruthLevel::RecoPureTruePtAssoc
+      TruthLevel::RecoPure
     };
     // diPhoton
     static constexpr std::array truthLevelsRecoDiPhotonRanked{
@@ -847,8 +871,7 @@ struct HadronPhotonCorrelation {
       TruthLevel::RecoMcMatched,
       TruthLevel::PseudoReco,
       TruthLevel::PseudoRecoAssocEv,
-      TruthLevel::PseudoRecoPure,
-      TruthLevel::PseudoRecoPureTruePtAssoc
+      TruthLevel::PseudoRecoPure
     };
     // position of truthLevel in chain, -1 if not in ranked truthLevels
     auto constexpr getRank = [](TruthLevel const truthLevel, auto const& truthLevelsRanked) constexpr -> int {
@@ -940,9 +963,7 @@ struct HadronPhotonCorrelation {
       return true;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
       return isSelectedPhotonPcm(associated);
-    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair ||
-                         AssocTypeV == AssocType::Pi0PcmPeak || AssocTypeV == AssocType::Pi0PcmSide ||
-                         AssocTypeV == AssocType::EtaPcmPeak || AssocTypeV == AssocType::EtaPcmSide) {
+    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
       return isSelectedPhotonPcmPair(associated);
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
@@ -963,7 +984,7 @@ struct HadronPhotonCorrelation {
   }
 
   // fill main histogram
-  template <auto& HistPaths, HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
+  template <auto const& HistPaths, HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
   void fillHistMain(auto const& histFillInfo) {
     if constexpr (HistFillModeV == HistFillMode::Plain) {
       if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm || AssocTypeV == AssocType::PhotonPcm) {
@@ -991,67 +1012,115 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  // get histogram y-quantity at x-value
-  double getH1ValueAt(auto const*const h1, double const value)
-  {
-    return h1->GetBinContent(h1->FindFixBin(value));
+  // tcm component: exponential for low pt
+  // parameter shape: [m0_h, A_e, T_e]
+  double tcmInvariantSoftExp(double const* pt, double const* par) {
+    double const ET_kin = std::sqrt(std::pow(pt[0], 2) + std::pow(par[0], 2)) - par[0];
+    return std::abs(par[1]) * std::exp(-1 * ET_kin / par[2]);
   }
-  // correction trigger as function of pt
-  double getTriggerPtCorrection(double const pt)
-  {
-    return applyTriggerPtCorrection ? getH1ValueAt(h1PtCorrectionTrigger, pt) : 1;
+  // tcm component: power law for high pt
+  // parameter shape: [A_p, T_p, N_p]
+  double tcmInvariantHardPower(double const* pt, double const* par) {
+    return std::abs(par[0]) / std::pow(1 + std::pow(pt[0], 2) / (std::pow(par[1], 2) * par[2]), par[2]);
+  }
+  // fit function for invariant pT spectrum
+  // parameter shape: [m0_h, A_e, T_e, A_p, T_p, N_p]
+  double tcmInvariantFit(double const* pt, double const* par) {
+    int const nParSoftExp = 3;
+    return tcmInvariantSoftExp(pt, par) + tcmInvariantHardPower(pt, par + nParSoftExp);
+  }
+  // tcm function (non-invariant)
+  double tcmParam(double const pt, std::vector<double> const par) {
+    return pt * tcmInvariantFit(&pt, par.data());
+  }
+
+  // pt weight
+  double ptWeightTcms(double const pt, std::vector<double> const& parNum, std::vector<double> const& parDenom) {
+    return tcmParam(pt, parNum) / tcmParam(pt, parDenom);
   }
 
   // rescale of pt spectra for mc
 
   template <AssocType AssocTypeV>
-  double getMcAssocPtScaling (double const ptTrue) {
+  double getMcAssocPtScalingFromPt(double const ptTrue) {
+    auto const getWeight = [this](double const pt, std::vector<double> const& ptRange, std::vector<double> const& parNum, std::vector<double> const& parDenom) {
+      if (pt < ptRange.at(0)) {
+        return ptWeightTcms(ptRange.at(0), parNum, parDenom);
+      }
+      if (pt > ptRange.at(1)) {
+        return ptWeightTcms(ptRange.at(1), parNum, parDenom);
+      }
+      return ptWeightTcms(pt, parNum, parDenom);
+    };
     if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      if (applyPhotonPtScaling) {
-        return 64;
-      } else {
-        return 1;
-      }
+      return applyScalingPhotonPt ? getWeight(ptTrue, ptRangeScalingPhoton, parScalingPhotonPtData, parScalingPhotonPtMc) : 1;
     } else if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
-      if (applyPi0PtScaling) {
-        return 67;
-      } else {
-        return 1;
-      }
+      return applyScalingPi0Pt ? getWeight(ptTrue, ptRangeScalingPi0, parScalingPi0PtData, parScalingPi0PtMc) : 1;
     } else if constexpr (AssocTypeV == AssocType::EtaPcm) {
-      if (applyEtaPtScaling) {
-        return 68;
-      } else {
-        return 1;
-      }
+      return applyScalingEtaPt ? getWeight(ptTrue, ptRangeScalingEta, parScalingEtaPtData, parScalingEtaPtMc) : 1;
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
   }
   template <AssocType AssocTypeV>
   double getMcAssocPtScaling(auto const& associated) {
-    if constexpr (AssocTypeV == AssocType::Hadron) {
-      return 1;
-    } else if constexpr (AssocTypeV == AssocType::Pipm) {
+    if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      return 63;
-    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair ||
-                         AssocTypeV == AssocType::Pi0PcmPeak || AssocTypeV == AssocType::Pi0PcmSide || AssocTypeV == AssocType::Pi0Pcm ||
-                         AssocTypeV == AssocType::EtaPcmPeak || AssocTypeV == AssocType::EtaPcmSide || AssocTypeV == AssocType::EtaPcm) {
-      return 69;
+      if (checkTruthLevelReco<TruthLevel::RecoPure, AssocTypeV>(associated)) {
+        return getMcAssocPtScalingFromPt<AssocTypeV>(associated.ptTruePure());
+      } else {
+        return 1;
+      }
+    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
+      if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::Pi0Pcm>(associated)) {
+        return getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(associated.ptTruePure());
+      } else if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::EtaPcm>(associated)) {
+        return getMcAssocPtScalingFromPt<AssocType::EtaPcm>(associated.ptTruePure());
+      } else {
+        return 1;
+      }
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
   }
 
-  double getMcK0sPtScaling (double const ptTrue) {
-    return 66; // work in progress
-  }
-  double getMcK0sPtScaling (auto const& associated) {
-    return 66; // work in progress
+  // get histogram y-quantity at x-value
+  double getH1ValueAt(auto const*const h1, double const value)
+  {
+    return h1->GetBinContent(h1->FindFixBin(value));
   }
 
+  // K0Short mc scaling
+  double getMcK0ShortPtScalingFromPt(double const ptTrue) {
+    return applyScalingK0ShortPt ? getH1ValueAt(h1PtScalingK0Short, ptTrue) : 1;
+  }
+  template <AssocType AssocTypeV>
+  double getMcK0ShortPtScaling (auto const& associated) {
+    if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
+      return 1;
+    } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
+      if (associated.impurityPhotonPcm() == static_cast<int>(PhotonImpurity::K0Short)) {
+        return getMcK0ShortPtScalingFromPt(associated.ptTrueOrigin());
+      } else {
+        return 1;
+      }
+    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
+      if (associated.impurityPi0Pcm() == static_cast<int>(PhotonImpurity::K0Short)) {
+        return getMcK0ShortPtScalingFromPt(associated.ptTrueOrigin());
+      } else {
+        return 1;
+      }
+    } else {
+      static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
+    }
+  }
+
+  // correction trigger as function of pt
+  double getTriggerPtCorrection(double const pt)
+  {
+    return applyTriggerPtCorrection ? getH1ValueAt(h1PtCorrectionTrigger, pt) : 1;
+  }
 
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
   double getDeltaPhi(double const phi1, double const phi2)
@@ -1196,7 +1265,7 @@ struct HadronPhotonCorrelation {
     initV0PhotonCut();
   }
 
-  // reconstructed ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // reco only ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ==========================================================================================================================================================================================
 
   // correlations /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1254,6 +1323,7 @@ struct HadronPhotonCorrelation {
         }
 
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
         fillHistMain<HistPathsRecoStd, HistFillMode::Plain, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
@@ -1270,7 +1340,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(trigger.pt());
         fillHistMain<HistPathsRecoStd, HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -1288,7 +1358,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillHistMain<HistPathsRecoStd, HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
@@ -1377,11 +1447,15 @@ struct HadronPhotonCorrelation {
           return;
         }
 
+        double const weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated);
+
         // mgg distribution
         histos.fill(HIST("reco/plain/h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair"),
-                    collision.ptMax(), associated.pt(), associated.mgg(), collision.posZ(), collision.nGlobalTracks());
+                    collision.ptMax(), associated.pt(), associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
+                    weight);
 
-        HistFillInfoPlainPt const histFillInfo = {collision.ptMax(), associated.pt()};
+        HistFillInfoPlainPt histFillInfo = {collision.ptMax(), associated.pt()};
+        histFillInfo.weight = weight;
         fillAssocsRecoPhotonPcmPair<HistFillMode::Plain>(histFillInfo, associated.mgg());
       };
       corrProcessPlain(collision, photonPcmPairsThisEvent, funcPlain);
@@ -1396,7 +1470,7 @@ struct HadronPhotonCorrelation {
           return;
         }
 
-        double const weight = getTriggerPtCorrection(trigger.pt());
+        double const weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(trigger.pt());
 
         // mgg distribution
         histos.fill(HIST("reco/corr/h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair"),
@@ -1423,7 +1497,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
@@ -1462,7 +1536,12 @@ struct HadronPhotonCorrelation {
           continue;
         }
 
-        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"), p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
+        double const weight = getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm1) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm1) *
+                              getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm2) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm2);
+
+        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"),
+                    p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks(),
+                    weight);
       }
     }
   }
@@ -1485,8 +1564,11 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
+      double const weight = getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm);
+
       histos.fill(HIST("reco/plain/h5_ptTrigPtAssocDcaZZPvMult_photonPcm"),
-                  collision.ptMax(), photonPcm.pt(), photonPcm.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks());
+                  collision.ptMax(), photonPcm.pt(), photonPcm.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks(),
+                  weight);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processPcmDcaZ, "process to test dcaZ distribution of photons", false);
@@ -1612,7 +1694,7 @@ struct HadronPhotonCorrelation {
   }();
 
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([](){})>
-  void fillAssocsMcTrue(auto const& histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = T_DecaySelfTrigFunc{}) {
+  void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = T_DecaySelfTrigFunc{}) {
     // main eta cut
     if (std::abs(assocParticle.eta()) > absEtaMax) {
       return;
@@ -1631,6 +1713,9 @@ struct HadronPhotonCorrelation {
       }
       // photon
       if (assocParticle.pdgCode() == PDG_t::kGamma) {
+        // mc-to-data scaling
+        histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::PhotonPcm>(assocParticle.pt());
+
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonPcm>(histFillInfo);
 
         // extra info for decay correlation only for total true level
@@ -1679,6 +1764,9 @@ struct HadronPhotonCorrelation {
     }
     // pi0
     if (assocParticle.pdgCode() == PDG_t::kPi0) {
+      // mc-to-data scaling
+      histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(assocParticle.pt());
+
       if constexpr (TruthLevelV == TruthLevel::True) {
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::Pi0Pcm>(histFillInfo);
       }
@@ -1713,6 +1801,9 @@ struct HadronPhotonCorrelation {
     }
     // eta
     if (assocParticle.pdgCode() == constants::physics::Pdg::kEta) {
+      // mc-to-data scaling
+      histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::EtaPcm>(assocParticle.pt());
+
       if constexpr (TruthLevelV == TruthLevel::True) {
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::EtaPcm>(histFillInfo);
       }
@@ -2008,12 +2099,13 @@ struct HadronPhotonCorrelation {
   }();
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
-  void fillTruthLevelsMcRecoStd(auto& histFillInfo, auto const& collision, auto const& associated) {
+  void fillTruthLevelsMcRecoStd(auto histFillInfo, auto const& collision, auto const& associated) {
     // photon impurity
     if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::PhotonPcm) {
       PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPhotonPcm());
       histos.fill(HIST("mc/plain/h3_ptTrigPtAssocCategory_recoImpurities_photonPcm"),
-                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity));
+                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity),
+                  histFillInfo.weight);
     }
     // collision association
     if (!checkTruthLevelReco<TruthLevel::RecoAssocEv, AssocTypeV>(associated)) {
@@ -2060,6 +2152,7 @@ struct HadronPhotonCorrelation {
         }
 
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
         fillTruthLevelsMcRecoStd<HistFillMode::Plain, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
@@ -2076,7 +2169,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(trigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Correlation, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -2094,7 +2187,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
@@ -2158,12 +2251,13 @@ struct HadronPhotonCorrelation {
   }();
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
-  void fillTruthLevelsMcRecoPhotonPcmPair(auto& histFillInfo, auto const& collision, auto const& associated) {
+  void fillTruthLevelsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated) {
     // pi0 impurity
     if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::Pi0Pcm) {
       PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPi0Pcm());
       histos.fill(HIST("mc/plain/h3_ptTrigPtAssocCategory_pseudoRecoImpurities_pi0Pcm"),
-                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity));
+                  collision.ptMax(), associated.pt(), binValuePhotonImpurity(impurity),
+                  histFillInfo.weight);
     }
     // collision association
     if (!checkTruthLevelReco<TruthLevel::PseudoRecoAssocEv, AssocTypeV>(associated)) {
@@ -2181,7 +2275,7 @@ struct HadronPhotonCorrelation {
   }
 
   template <HistFillMode HistFillModeV>
-  void fillAssocsMcRecoPhotonPcmPair(auto& histFillInfo, auto const& collision, auto const& associated) {
+  void fillAssocsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated) {
     // pi0Pcm
     if (checkTruthLevelReco<TruthLevel::PseudoReco, AssocType::Pi0Pcm>(associated)) {
       // pseudo yield
@@ -2189,7 +2283,8 @@ struct HadronPhotonCorrelation {
       // mgg distribution
       if constexpr (HistFillModeV == HistFillMode::Plain) {
         histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm"),
-                  histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
+                    histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
+                    histFillInfo.weight);
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
         histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm"),
                     histFillInfo.ptTrig, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
@@ -2210,7 +2305,8 @@ struct HadronPhotonCorrelation {
       // mgg distribution
       if constexpr (HistFillModeV == HistFillMode::Plain) {
         histos.fill(HIST("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPcm"),
-                  histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks());
+                    histFillInfo.ptMax, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
+                    histFillInfo.weight);
       } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
         histos.fill(HIST("mc/corr/h5_ptTrigPtAssocMggZPvMult_pseudoReco_etaPcm"),
                     histFillInfo.ptTrig, histFillInfo.ptAssoc, associated.mgg(), collision.posZ(), collision.nGlobalTracks(),
@@ -2242,6 +2338,7 @@ struct HadronPhotonCorrelation {
         }
 
         HistFillInfoPlainPt histFillInfo = {collision.ptMax(), associated.pt()};
+        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated);
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Plain>(histFillInfo, collision, associated);
       };
       corrProcessPlain(collision, photonPcmPairsThisEvent, funcPlain);
@@ -2258,7 +2355,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(trigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
@@ -2276,7 +2373,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
@@ -2317,8 +2414,11 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
+      double const weight = getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm);
+
       histos.fill(HIST("mc/plain/h5_ptTrigPtAssocDcaZZPvMult_photonPcm"),
-                  collision.ptMax(), photonPcm.pt(), photonPcm.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks());
+                  collision.ptMax(), photonPcm.pt(), photonPcm.v0PhotonKF().dcaZtopv(), collision.posZ(), collision.nGlobalTracks(),
+                  weight);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processPcmDcaZTrue, "process to test true dcaZ distribution of photons in trigger collisions", false);
