@@ -263,13 +263,6 @@ struct HadronPhotonCorrelation {
     TrueAssocEvRecoPtTrig
   };
 
-  struct HistPathEntry {
-    HistFillMode fillMode;
-    TruthLevel truthLevel;
-    AssocType assocType;
-    char const* path;
-  };
-
   struct HistFillInfoPlainPt {
     double ptMax, ptAssoc;
     double weight = 1;
@@ -494,6 +487,114 @@ struct HadronPhotonCorrelation {
     }
   }
 
+  // histograms
+
+  // main histogram naming (compile time 'string' required for O2 hist registry)
+  static constexpr std::string_view nameHistMainRecoOrMc(TruthLevel truthLevel)
+  {
+    return truthLevel == TruthLevel::Reco ? "reco" : "mc";
+  }
+  static constexpr std::string_view nameHistMainMode(HistFillMode const histFillMode)
+  {
+    switch (histFillMode) {
+    case HistFillMode::PlainPt:
+      return "plain/h2_ptTrigPtAssoc_";
+    case HistFillMode::PlainPhiEta:
+      return "plain/h4_ptTrigPtAssocPhiEta_";
+    case HistFillMode::PlainZPvMult:
+      return "plain/h4_ptTrigPtAssocZPvMult_";
+    case HistFillMode::Correlation:
+      return "corr/h6_corr_";
+    case HistFillMode::Mixing:
+      return "corr/h6_mix_";
+    default:
+      throw std::runtime_error("histFillMode not found for hist name");
+    }
+  }
+  static constexpr std::string_view nameHistMainTruth(TruthLevel const truthLevel)
+  {
+    switch (truthLevel) {
+    case TruthLevel::Reco:
+      return "reco";
+    case TruthLevel::RecoAssocEv:
+      return "recoAssocEv";
+    case TruthLevel::RecoPure:
+      return "recoPure";
+    case TruthLevel::RecoPureTruePtAssoc:
+      return "recoPureTruePtAssoc";
+    case TruthLevel::PseudoReco:
+      return "pseudoReco";
+    case TruthLevel::PseudoRecoAssocEv:
+      return "pseudoRecoAssocEv";
+    case TruthLevel::PseudoRecoPure:
+      return "pseudoRecoPure";
+    case TruthLevel::PseudoRecoPureTruePtAssoc:
+      return "pseudoRecoPureTruePtAssoc";
+    case TruthLevel::TrueGeoAcc:
+      return "trueGeoAcc";
+    case TruthLevel::TrueMeasDecay:
+      return "trueMeasDecay";
+    case TruthLevel::TrueAssocEvRecoPtTrig:
+      return "trueAssocEvRecoPtTrig";
+    case TruthLevel::TrueAssocEv:
+      return "trueAssocEv";
+    case TruthLevel::True:
+      return "true";
+    case TruthLevel::TrueDecaySelfTrig:
+      return "trueDecaySelfTrig";
+    default:
+      throw std::runtime_error("truthLevel not found for hist name");
+    }
+  }
+  static constexpr std::string_view nameHistMainAssoc(AssocType const assocType, TruthLevel const truthLevel)
+  {
+    switch (assocType) {
+    case AssocType::Hadron:
+      return "hadron";
+    case AssocType::Pipm:
+      return "pipm";
+    case AssocType::PhotonPcm:
+      return isTrueLevel(truthLevel) ? "photon" : "photonPcm";
+    case AssocType::PhotonDecay:
+      return "photonDecay";
+    case AssocType::PhotonDirect:
+      return "photonDirect";
+    case AssocType::Pi0Pcm:
+      return isTrueLevel(truthLevel) ? "pi0" : "pi0Pcm";
+    case AssocType::Pi0PcmPeak:
+      return "pi0PcmPeak";
+    case AssocType::Pi0PcmSide:
+      return "pi0PcmSide";
+    case AssocType::PhotonPi0:
+      return "photonPi0";
+    case AssocType::EtaPcm:
+      return isTrueLevel(truthLevel) ? "eta" : "etaPcm";
+    case AssocType::EtaPcmPeak:
+      return "etaPcmPeak";
+    case AssocType::EtaPcmSide:
+      return "etaPcmSide";
+    case AssocType::PhotonEta:
+      return "photonEta";
+    case AssocType::Omega:
+      return "omega";
+    case AssocType::PhotonOmega:
+      return "photonOmega";
+    case AssocType::EtaPrime:
+      return "etaPrime";
+    case AssocType::PhotonEtaPrime:
+      return "photonEtaPrime";
+    case AssocType::PhotonOtherMother:
+      return "photonOtherMother";
+    default:
+      throw std::runtime_error("assocType not found for hist name");
+    }
+  }
+  template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
+  static constexpr auto histPath() {
+    return HIST(nameHistMainRecoOrMc(TruthLevelV)) + HIST("/") +
+           HIST(nameHistMainMode(HistFillModeV)) + HIST(nameHistMainTruth(TruthLevelV)) + HIST("_") + HIST(nameHistMainAssoc(AssocTypeV, TruthLevelV));
+  }
+
   // create histograms
   void initHistograms()
   {
@@ -520,26 +621,25 @@ struct HadronPhotonCorrelation {
 
     // main info for assocType (spectra and correlation)
     auto const addMainAssocHists =
-      [&](std::string const& recoOrMc, std::string const& nameTruthLevel, std::string const& nameAssoc, bool const resolvedInfo, bool const trueColInfo) {
+      [&](TruthLevel const truthLevel, AssocType const assocType, bool const resolvedInfo, bool const trueColInfo) {
+        // runtime counterpart of histPath(), title is name without directories
+        auto const addMainHist = [&](HistFillMode const histFillMode, std::vector<AxisSpec> const& axes) {
+          std::string const name = std::format("{}/{}{}_{}", nameHistMainRecoOrMc(truthLevel), nameHistMainMode(histFillMode),
+                                               nameHistMainTruth(truthLevel), nameHistMainAssoc(assocType, truthLevel));
+          histos.add(name, name.substr(name.rfind('/') + 1).data(), kTHnSparseD, axes, true);
+        };
         if (resolvedInfo) {
-          histos.add(std::format("{}/plain/h4_ptTrigPtAssocPhiEta_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h4_ptTrigPtAssocPhiEta_{}_{}", nameTruthLevel, nameAssoc).data(),
-                     kTHnSparseD, {axisPtTrig, axisPtAssoc, axisPhi, axisEta}, true);
-          histos.add(std::format("{}/plain/h4_ptTrigPtAssocZPvMult_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h4_ptTrigPtAssocZPvMult_{}_{}", nameTruthLevel, nameAssoc).data(),
-                     kTHnSparseD, {axisPtTrig, axisPtAssoc, axisZPv, axisMult}, true);
+          addMainHist(HistFillMode::PlainPhiEta, {axisPtTrig, axisPtAssoc, axisPhi, axisEta});
+          addMainHist(HistFillMode::PlainZPvMult, {axisPtTrig, axisPtAssoc, axisZPv, axisMult});
         } else {
-          histos.add(std::format("{}/plain/h2_ptTrigPtAssoc_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h2_ptTrigPtAssoc_{}_{}", nameTruthLevel, nameAssoc).data(),
-                     kTHnSparseD, {axisPtTrig, axisPtAssoc}, true);
+          addMainHist(HistFillMode::PlainPt, {axisPtTrig, axisPtAssoc});
         }
         if (!trueColInfo) {
-          histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
-                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
-          histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
-                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning}, true);
+          addMainHist(HistFillMode::Correlation, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning});
+          addMainHist(HistFillMode::Mixing, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinning, axisMultBinning});
         } else {
-          histos.add(std::format("{}/corr/h6_corr_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_corr_{}_{}", nameTruthLevel, nameAssoc).data(),
-                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue}, true);
-          histos.add(std::format("{}/corr/h6_mix_{}_{}", recoOrMc, nameTruthLevel, nameAssoc).data(), std::format("h6_mix_{}_{}", nameTruthLevel, nameAssoc).data(),
-                    kTHnSparseD, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue}, true);
+          addMainHist(HistFillMode::Correlation, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue});
+          addMainHist(HistFillMode::Mixing, {axisDPhi, axisDEta, axisPtTrig, axisPtAssoc, axisZPvBinningMcTrue, axisMultBinningMcTrue});
         }
       };
 
@@ -549,11 +649,11 @@ struct HadronPhotonCorrelation {
 
     // reco (correlation) analysis
     histos.add("reco/corr/h3_ptPhiEta_trig", "h3_ptPhiEta_trig", kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
-    for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photonPcm"}) {
-      addMainAssocHists("reco", "reco", nameAssoc, true, false);
+    for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+      addMainAssocHists(TruthLevel::Reco, assocType, true, false);
     }
-    for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0PcmPeak", "pi0PcmSide", "etaPcmPeak", "etaPcmSide"}) {
-      addMainAssocHists("reco", "reco", nameAssoc, false, false);
+    for (AssocType const assocType : {AssocType::Pi0PcmPeak, AssocType::Pi0PcmSide, AssocType::EtaPcmPeak, AssocType::EtaPcmSide}) {
+      addMainAssocHists(TruthLevel::Reco, assocType, false, false);
     }
 
     // photonPcm pairs
@@ -581,39 +681,39 @@ struct HadronPhotonCorrelation {
     histos.add("mc/info/h3_nEv_ptTrigZPvMult_trueAssocEvRecoPtTrig", "h3_nEv_ptTrigZPvMult_trueAssocEvRecoPtTrig", kTHnSparseD, {axisPtTrig, axisZPv, axisMult}, true);
 
     // true++ (event selection)
-    for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"true", "trueAssocEv", "trueAssocEvRecoPtTrig"}) {
-      histos.add(std::format("mc/corr/h3_ptPhiEta_trig_{}", nameTruthLevel).data(), std::format("h3_ptPhiEta_trig_{}", nameTruthLevel).data(),
+    for (TruthLevel const truthLevel : {TruthLevel::True, TruthLevel::TrueAssocEv, TruthLevel::TrueAssocEvRecoPtTrig}) {
+      histos.add(std::format("mc/corr/h3_ptPhiEta_trig_{}", nameHistMainTruth(truthLevel)).data(), std::format("h3_ptPhiEta_trig_{}", nameHistMainTruth(truthLevel)).data(),
                  kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
-      for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photon"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true, true);
+      for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+        addMainAssocHists(truthLevel, assocType, true, true);
       }
-      for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0", "eta"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, true);
+      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+        addMainAssocHists(truthLevel, assocType, false, true);
       }
     }
     // extra truthLevels for photonPcmPair
-    for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"trueDecaySelfTrig", "trueMeasDecay", "trueGeoAcc"}) {
-      for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0", "eta"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, true);
+    for (TruthLevel const truthLevel : {TruthLevel::TrueDecaySelfTrig, TruthLevel::TrueMeasDecay, TruthLevel::TrueGeoAcc}) {
+      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+        addMainAssocHists(truthLevel, assocType, false, true);
       }
     }
     // assocTypes just on true level
-    for (std::string const& nameAssoc : std::initializer_list<std::string>{"photonDecay", "photonDirect", "photonPi0", "photonEta",
-                                                                           "omega", "photonOmega", "etaPrime", "photonEtaPrime", "photonOtherMother"}) {
-      addMainAssocHists("mc", "true", nameAssoc, false, true);
+    for (AssocType const assocType : {AssocType::PhotonDecay, AssocType::PhotonDirect, AssocType::PhotonPi0, AssocType::PhotonEta,
+                                      AssocType::Omega, AssocType::PhotonOmega, AssocType::EtaPrime, AssocType::PhotonEtaPrime, AssocType::PhotonOtherMother}) {
+      addMainAssocHists(TruthLevel::True, assocType, false, true);
     }
 
     // reco++ (MC info)
     // std assoc
-    for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"recoAssocEv", "recoPure", "recoPureTruePtAssoc"}) {
-      for (std::string const& nameAssoc : std::initializer_list<std::string>{"hadron", "pipm", "photonPcm"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, true, false);
+    for (TruthLevel const truthLevel : {TruthLevel::RecoAssocEv, TruthLevel::RecoPure, TruthLevel::RecoPureTruePtAssoc}) {
+      for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+        addMainAssocHists(truthLevel, assocType, true, false);
       }
     }
     // photonPcmPair assoc
-    for (std::string const& nameTruthLevel : std::initializer_list<std::string>{"pseudoReco", "pseudoRecoAssocEv", "pseudoRecoPure", "pseudoRecoPureTruePtAssoc"}) {
-      for (std::string const& nameAssoc : std::initializer_list<std::string>{"pi0Pcm", "etaPcm"}) {
-        addMainAssocHists("mc", nameTruthLevel, nameAssoc, false, false);
+    for (TruthLevel const truthLevel : {TruthLevel::PseudoReco, TruthLevel::PseudoRecoAssocEv, TruthLevel::PseudoRecoPure, TruthLevel::PseudoRecoPureTruePtAssoc}) {
+      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+        addMainAssocHists(truthLevel, assocType, false, false);
       }
     }
     // impurity details
@@ -976,38 +1076,24 @@ struct HadronPhotonCorrelation {
   // analysis helpers /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // select standard/main histogram compile-time path from array
-  static consteval char const* getHistPathMain(auto const& histPaths, HistFillMode const fillMode, TruthLevel const truthLevel, AssocType const assocType) {
-    for (auto const& entry : histPaths) {
-      if (entry.fillMode == fillMode && entry.truthLevel == truthLevel && entry.assocType == assocType) {
-        return entry.path;
-      }
-    }
-    throw "path not found";
-  }
-
   // fill main histogram
-  template <auto const& HistPaths, HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
+  template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
   void fillHistMain(auto const& histFillInfo) {
     if constexpr (HistFillModeV == HistFillMode::Plain) {
       if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm || AssocTypeV == AssocType::PhotonPcm) {
-        histos.fill(HIST(getHistPathMain(HistPaths, HistFillMode::PlainPhiEta, TruthLevelV, AssocTypeV)),
+        histos.fill(histPath<HistFillMode::PlainPhiEta, TruthLevelV, AssocTypeV>(),
                     histFillInfo.ptMax, histFillInfo.ptAssoc, histFillInfo.phi, histFillInfo.eta,
                     histFillInfo.weight);
-        histos.fill(HIST(getHistPathMain(HistPaths, HistFillMode::PlainZPvMult, TruthLevelV, AssocTypeV)),
+        histos.fill(histPath<HistFillMode::PlainZPvMult, TruthLevelV, AssocTypeV>(),
                     histFillInfo.ptMax, histFillInfo.ptAssoc, histFillInfo.zPv, histFillInfo.mult,
                     histFillInfo.weight);
       } else {
-        histos.fill(HIST(getHistPathMain(HistPaths, HistFillMode::PlainPt, TruthLevelV, AssocTypeV)),
+        histos.fill(histPath<HistFillMode::PlainPt, TruthLevelV, AssocTypeV>(),
                     histFillInfo.ptMax, histFillInfo.ptAssoc,
                     histFillInfo.weight);
       }
-    } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
-      histos.fill(HIST(getHistPathMain(HistPaths, HistFillMode::Correlation, TruthLevelV, AssocTypeV)),
-                  histFillInfo.dPhi, histFillInfo.dEta, histFillInfo.ptTrig, histFillInfo.ptAssoc, histFillInfo.zPv, histFillInfo.mult,
-                  histFillInfo.weight);
-    } else if constexpr (HistFillModeV == HistFillMode::Mixing) {
-      histos.fill(HIST(getHistPathMain(HistPaths, HistFillMode::Mixing, TruthLevelV, AssocTypeV)),
+    } else if constexpr (HistFillModeV == HistFillMode::Correlation || HistFillModeV == HistFillMode::Mixing) {
+      histos.fill(histPath<HistFillModeV, TruthLevelV, AssocTypeV>(),
                   histFillInfo.dPhi, histFillInfo.dEta, histFillInfo.ptTrig, histFillInfo.ptAssoc, histFillInfo.zPv, histFillInfo.mult,
                   histFillInfo.weight);
     } else {
@@ -1293,27 +1379,7 @@ struct HadronPhotonCorrelation {
   // correlations /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // standard reco histogram compile-time paths
-  static constexpr auto HistPathsRecoStd = []() {
-    using enum HistFillMode;
-    using enum TruthLevel;
-    using enum AssocType;
-
-    return std::to_array<HistPathEntry>({
-      {PlainPhiEta,  Reco, Hadron,    "reco/plain/h4_ptTrigPtAssocPhiEta_reco_hadron"},
-      {PlainZPvMult, Reco, Hadron,    "reco/plain/h4_ptTrigPtAssocZPvMult_reco_hadron"},
-      {Correlation,  Reco, Hadron,    "reco/corr/h6_corr_reco_hadron"},
-      {Mixing,       Reco, Hadron,    "reco/corr/h6_mix_reco_hadron"},
-      {PlainPhiEta,  Reco, Pipm,      "reco/plain/h4_ptTrigPtAssocPhiEta_reco_pipm"},
-      {PlainZPvMult, Reco, Pipm,      "reco/plain/h4_ptTrigPtAssocZPvMult_reco_pipm"},
-      {Correlation,  Reco, Pipm,      "reco/corr/h6_corr_reco_pipm"},
-      {Mixing,       Reco, Pipm,      "reco/corr/h6_mix_reco_pipm"},
-      {PlainPhiEta,  Reco, PhotonPcm, "reco/plain/h4_ptTrigPtAssocPhiEta_reco_photonPcm"},
-      {PlainZPvMult, Reco, PhotonPcm, "reco/plain/h4_ptTrigPtAssocZPvMult_reco_photonPcm"},
-      {Correlation,  Reco, PhotonPcm, "reco/corr/h6_corr_reco_photonPcm"},
-      {Mixing,       Reco, PhotonPcm, "reco/corr/h6_mix_reco_photonPcm"}
-    });
-  }();
+  // standard reco ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <AssocType AssocTypeV>
   void fillProcessRecoStd(auto const& collisions, auto const& triggers, auto const& assocs)
@@ -1346,7 +1412,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
-        fillHistMain<HistPathsRecoStd, HistFillMode::Plain, TruthLevel::Reco, AssocTypeV>(histFillInfo);
+        fillHistMain<HistFillMode::Plain, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
 
@@ -1363,7 +1429,7 @@ struct HadronPhotonCorrelation {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(trigger.pt());
-        fillHistMain<HistPathsRecoStd, HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
+        fillHistMain<HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
 
@@ -1380,7 +1446,7 @@ struct HadronPhotonCorrelation {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
-        fillHistMain<HistPathsRecoStd, HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
+        fillHistMain<HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
     }
@@ -1405,46 +1471,26 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcm, "process standard for associated photonPcm", false);
 
-  // photonPcmPair reco histogram compile-time paths
-  static constexpr auto HistPathsRecoPhotonPcmPair = []() {
-    using enum HistFillMode;
-    using enum TruthLevel;
-    using enum AssocType;
-
-    return std::to_array<HistPathEntry>({
-      {PlainPt,      Reco, Pi0PcmPeak, "reco/plain/h2_ptTrigPtAssoc_reco_pi0PcmPeak"},
-      {Correlation,  Reco, Pi0PcmPeak, "reco/corr/h6_corr_reco_pi0PcmPeak"},
-      {Mixing,       Reco, Pi0PcmPeak, "reco/corr/h6_mix_reco_pi0PcmPeak"},
-      {PlainPt,      Reco, Pi0PcmSide, "reco/plain/h2_ptTrigPtAssoc_reco_pi0PcmSide"},
-      {Correlation,  Reco, Pi0PcmSide, "reco/corr/h6_corr_reco_pi0PcmSide"},
-      {Mixing,       Reco, Pi0PcmSide, "reco/corr/h6_mix_reco_pi0PcmSide"},
-      {PlainPt,      Reco, EtaPcmPeak, "reco/plain/h2_ptTrigPtAssoc_reco_etaPcmPeak"},
-      {Correlation,  Reco, EtaPcmPeak, "reco/corr/h6_corr_reco_etaPcmPeak"},
-      {Mixing,       Reco, EtaPcmPeak, "reco/corr/h6_mix_reco_etaPcmPeak"},
-      {PlainPt,      Reco, EtaPcmSide, "reco/plain/h2_ptTrigPtAssoc_reco_etaPcmSide"},
-      {Correlation,  Reco, EtaPcmSide, "reco/corr/h6_corr_reco_etaPcmSide"},
-      {Mixing,       Reco, EtaPcmSide, "reco/corr/h6_mix_reco_etaPcmSide"}
-    });
-  }();
+  // photonPcmPair reco :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV>
   void fillAssocsRecoPhotonPcmPair(auto const& histFillInfo, double const mgg) {
     // pi0
     if (isInMassRange<AssocType::Pi0PcmPeak>(mgg)) {
-      fillHistMain<HistPathsRecoPhotonPcmPair, HistFillModeV, TruthLevel::Reco, AssocType::Pi0PcmPeak>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::Reco, AssocType::Pi0PcmPeak>(histFillInfo);
       return;
     }
     if (isInMassRange<AssocType::Pi0PcmSide>(mgg)) {
-      fillHistMain<HistPathsRecoPhotonPcmPair, HistFillModeV, TruthLevel::Reco, AssocType::Pi0PcmSide>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::Reco, AssocType::Pi0PcmSide>(histFillInfo);
       return;
     }
     // eta
     if (isInMassRange<AssocType::EtaPcmPeak>(mgg)) {
-      fillHistMain<HistPathsRecoPhotonPcmPair, HistFillModeV, TruthLevel::Reco, AssocType::EtaPcmPeak>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::Reco, AssocType::EtaPcmPeak>(histFillInfo);
       return;
     }
     if (isInMassRange<AssocType::EtaPcmSide>(mgg)) {
-      fillHistMain<HistPathsRecoPhotonPcmPair, HistFillModeV, TruthLevel::Reco, AssocType::EtaPcmSide>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::Reco, AssocType::EtaPcmSide>(histFillInfo);
       return;
     }
   }
@@ -1595,119 +1641,7 @@ struct HadronPhotonCorrelation {
   // correlations /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // mc true++ histogram compile-time paths
-  static constexpr auto HistPathsMcTrue = []() {
-    using enum HistFillMode;
-    using enum TruthLevel;
-    using enum AssocType;
-
-    return std::to_array<HistPathEntry>({
-      {PlainPhiEta,  True, Hadron,            "mc/plain/h4_ptTrigPtAssocPhiEta_true_hadron"},
-      {PlainZPvMult, True, Hadron,            "mc/plain/h4_ptTrigPtAssocZPvMult_true_hadron"},
-      {Correlation,  True, Hadron,            "mc/corr/h6_corr_true_hadron"},
-      {Mixing,       True, Hadron,            "mc/corr/h6_mix_true_hadron"},
-      {PlainPhiEta,  True, Pipm,              "mc/plain/h4_ptTrigPtAssocPhiEta_true_pipm"},
-      {PlainZPvMult, True, Pipm,              "mc/plain/h4_ptTrigPtAssocZPvMult_true_pipm"},
-      {Correlation,  True, Pipm,              "mc/corr/h6_corr_true_pipm"},
-      {Mixing,       True, Pipm,              "mc/corr/h6_mix_true_pipm"},
-      {PlainPhiEta,  True, PhotonPcm,         "mc/plain/h4_ptTrigPtAssocPhiEta_true_photon"},
-      {PlainZPvMult, True, PhotonPcm,         "mc/plain/h4_ptTrigPtAssocZPvMult_true_photon"},
-      {Correlation,  True, PhotonPcm,         "mc/corr/h6_corr_true_photon"},
-      {Mixing,       True, PhotonPcm,         "mc/corr/h6_mix_true_photon"},
-      {PlainPt,      True, PhotonDecay,       "mc/plain/h2_ptTrigPtAssoc_true_photonDecay"},
-      {Correlation,  True, PhotonDecay,       "mc/corr/h6_corr_true_photonDecay"},
-      {Mixing,       True, PhotonDecay,       "mc/corr/h6_mix_true_photonDecay"},
-      {PlainPt,      True, PhotonDirect,      "mc/plain/h2_ptTrigPtAssoc_true_photonDirect"},
-      {Correlation,  True, PhotonDirect,      "mc/corr/h6_corr_true_photonDirect"},
-      {Mixing,       True, PhotonDirect,      "mc/corr/h6_mix_true_photonDirect"},
-      {PlainPt,      True, Pi0Pcm,            "mc/plain/h2_ptTrigPtAssoc_true_pi0"},
-      {Correlation,  True, Pi0Pcm,            "mc/corr/h6_corr_true_pi0"},
-      {Mixing,       True, Pi0Pcm,            "mc/corr/h6_mix_true_pi0"},
-      {PlainPt,      True, PhotonPi0,         "mc/plain/h2_ptTrigPtAssoc_true_photonPi0"},
-      {Correlation,  True, PhotonPi0,         "mc/corr/h6_corr_true_photonPi0"},
-      {Mixing,       True, PhotonPi0,         "mc/corr/h6_mix_true_photonPi0"},
-      {PlainPt,      True, EtaPcm,            "mc/plain/h2_ptTrigPtAssoc_true_eta"},
-      {Correlation,  True, EtaPcm,            "mc/corr/h6_corr_true_eta"},
-      {Mixing,       True, EtaPcm,            "mc/corr/h6_mix_true_eta"},
-      {PlainPt,      True, PhotonEta,         "mc/plain/h2_ptTrigPtAssoc_true_photonEta"},
-      {Correlation,  True, PhotonEta,         "mc/corr/h6_corr_true_photonEta"},
-      {Mixing,       True, PhotonEta,         "mc/corr/h6_mix_true_photonEta"},
-      {PlainPt,      True, Omega,             "mc/plain/h2_ptTrigPtAssoc_true_omega"},
-      {Correlation,  True, Omega,             "mc/corr/h6_corr_true_omega"},
-      {Mixing,       True, Omega,             "mc/corr/h6_mix_true_omega"},
-      {PlainPt,      True, PhotonOmega,       "mc/plain/h2_ptTrigPtAssoc_true_photonOmega"},
-      {Correlation,  True, PhotonOmega,       "mc/corr/h6_corr_true_photonOmega"},
-      {Mixing,       True, PhotonOmega,       "mc/corr/h6_mix_true_photonOmega"},
-      {PlainPt,      True, EtaPrime,          "mc/plain/h2_ptTrigPtAssoc_true_etaPrime"},
-      {Correlation,  True, EtaPrime,          "mc/corr/h6_corr_true_etaPrime"},
-      {Mixing,       True, EtaPrime,          "mc/corr/h6_mix_true_etaPrime"},
-      {PlainPt,      True, PhotonEtaPrime,    "mc/plain/h2_ptTrigPtAssoc_true_photonEtaPrime"},
-      {Correlation,  True, PhotonEtaPrime,    "mc/corr/h6_corr_true_photonEtaPrime"},
-      {Mixing,       True, PhotonEtaPrime,    "mc/corr/h6_mix_true_photonEtaPrime"},
-      {PlainPt,      True, PhotonOtherMother, "mc/plain/h2_ptTrigPtAssoc_true_photonOtherMother"},
-      {Correlation,  True, PhotonOtherMother, "mc/corr/h6_corr_true_photonOtherMother"},
-      {Mixing,       True, PhotonOtherMother, "mc/corr/h6_mix_true_photonOtherMother"},
-
-      {PlainPhiEta,  TrueAssocEv, Hadron,    "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEv_hadron"},
-      {PlainZPvMult, TrueAssocEv, Hadron,    "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEv_hadron"},
-      {Correlation,  TrueAssocEv, Hadron,    "mc/corr/h6_corr_trueAssocEv_hadron"},
-      {Mixing,       TrueAssocEv, Hadron,    "mc/corr/h6_mix_trueAssocEv_hadron"},
-      {PlainPhiEta,  TrueAssocEv, Pipm,      "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEv_pipm"},
-      {PlainZPvMult, TrueAssocEv, Pipm,      "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEv_pipm"},
-      {Correlation,  TrueAssocEv, Pipm,      "mc/corr/h6_corr_trueAssocEv_pipm"},
-      {Mixing,       TrueAssocEv, Pipm,      "mc/corr/h6_mix_trueAssocEv_pipm"},
-      {PlainPhiEta,  TrueAssocEv, PhotonPcm, "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEv_photon"},
-      {PlainZPvMult, TrueAssocEv, PhotonPcm, "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEv_photon"},
-      {Correlation,  TrueAssocEv, PhotonPcm, "mc/corr/h6_corr_trueAssocEv_photon"},
-      {Mixing,       TrueAssocEv, PhotonPcm, "mc/corr/h6_mix_trueAssocEv_photon"},
-      {PlainPt,      TrueAssocEv, Pi0Pcm,    "mc/plain/h2_ptTrigPtAssoc_trueAssocEv_pi0"},
-      {Correlation,  TrueAssocEv, Pi0Pcm,    "mc/corr/h6_corr_trueAssocEv_pi0"},
-      {Mixing,       TrueAssocEv, Pi0Pcm,    "mc/corr/h6_mix_trueAssocEv_pi0"},
-      {PlainPt,      TrueAssocEv, EtaPcm,    "mc/plain/h2_ptTrigPtAssoc_trueAssocEv_eta"},
-      {Correlation,  TrueAssocEv, EtaPcm,    "mc/corr/h6_corr_trueAssocEv_eta"},
-      {Mixing,       TrueAssocEv, EtaPcm,    "mc/corr/h6_mix_trueAssocEv_eta"},
-
-      {PlainPhiEta,  TrueAssocEvRecoPtTrig, Hadron,    "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEvRecoPtTrig_hadron"},
-      {PlainZPvMult, TrueAssocEvRecoPtTrig, Hadron,    "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEvRecoPtTrig_hadron"},
-      {Correlation,  TrueAssocEvRecoPtTrig, Hadron,    "mc/corr/h6_corr_trueAssocEvRecoPtTrig_hadron"},
-      {Mixing,       TrueAssocEvRecoPtTrig, Hadron,    "mc/corr/h6_mix_trueAssocEvRecoPtTrig_hadron"},
-      {PlainPhiEta,  TrueAssocEvRecoPtTrig, Pipm,      "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEvRecoPtTrig_pipm"},
-      {PlainZPvMult, TrueAssocEvRecoPtTrig, Pipm,      "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEvRecoPtTrig_pipm"},
-      {Correlation,  TrueAssocEvRecoPtTrig, Pipm,      "mc/corr/h6_corr_trueAssocEvRecoPtTrig_pipm"},
-      {Mixing,       TrueAssocEvRecoPtTrig, Pipm,      "mc/corr/h6_mix_trueAssocEvRecoPtTrig_pipm"},
-      {PlainPhiEta,  TrueAssocEvRecoPtTrig, PhotonPcm, "mc/plain/h4_ptTrigPtAssocPhiEta_trueAssocEvRecoPtTrig_photon"},
-      {PlainZPvMult, TrueAssocEvRecoPtTrig, PhotonPcm, "mc/plain/h4_ptTrigPtAssocZPvMult_trueAssocEvRecoPtTrig_photon"},
-      {Correlation,  TrueAssocEvRecoPtTrig, PhotonPcm, "mc/corr/h6_corr_trueAssocEvRecoPtTrig_photon"},
-      {Mixing,       TrueAssocEvRecoPtTrig, PhotonPcm, "mc/corr/h6_mix_trueAssocEvRecoPtTrig_photon"},
-      {PlainPt,      TrueAssocEvRecoPtTrig, Pi0Pcm,    "mc/plain/h2_ptTrigPtAssoc_trueAssocEvRecoPtTrig_pi0"},
-      {Correlation,  TrueAssocEvRecoPtTrig, Pi0Pcm,    "mc/corr/h6_corr_trueAssocEvRecoPtTrig_pi0"},
-      {Mixing,       TrueAssocEvRecoPtTrig, Pi0Pcm,    "mc/corr/h6_mix_trueAssocEvRecoPtTrig_pi0"},
-      {PlainPt,      TrueAssocEvRecoPtTrig, EtaPcm,    "mc/plain/h2_ptTrigPtAssoc_trueAssocEvRecoPtTrig_eta"},
-      {Correlation,  TrueAssocEvRecoPtTrig, EtaPcm,    "mc/corr/h6_corr_trueAssocEvRecoPtTrig_eta"},
-      {Mixing,       TrueAssocEvRecoPtTrig, EtaPcm,    "mc/corr/h6_mix_trueAssocEvRecoPtTrig_eta"},
-
-      {PlainPt,      TrueDecaySelfTrig, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_trueDecaySelfTrig_pi0"},
-      {Correlation,  TrueDecaySelfTrig, Pi0Pcm, "mc/corr/h6_corr_trueDecaySelfTrig_pi0"},
-      {Mixing,       TrueDecaySelfTrig, Pi0Pcm, "mc/corr/h6_mix_trueDecaySelfTrig_pi0"},
-      {PlainPt,      TrueDecaySelfTrig, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_trueDecaySelfTrig_eta"},
-      {Correlation,  TrueDecaySelfTrig, EtaPcm, "mc/corr/h6_corr_trueDecaySelfTrig_eta"},
-      {Mixing,       TrueDecaySelfTrig, EtaPcm, "mc/corr/h6_mix_trueDecaySelfTrig_eta"},
-
-      {PlainPt,      TrueMeasDecay, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_trueMeasDecay_pi0"},
-      {Correlation,  TrueMeasDecay, Pi0Pcm, "mc/corr/h6_corr_trueMeasDecay_pi0"},
-      {Mixing,       TrueMeasDecay, Pi0Pcm, "mc/corr/h6_mix_trueMeasDecay_pi0"},
-      {PlainPt,      TrueMeasDecay, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_trueMeasDecay_eta"},
-      {Correlation,  TrueMeasDecay, EtaPcm, "mc/corr/h6_corr_trueMeasDecay_eta"},
-      {Mixing,       TrueMeasDecay, EtaPcm, "mc/corr/h6_mix_trueMeasDecay_eta"},
-
-      {PlainPt,      TrueGeoAcc, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_trueGeoAcc_pi0"},
-      {Correlation,  TrueGeoAcc, Pi0Pcm, "mc/corr/h6_corr_trueGeoAcc_pi0"},
-      {Mixing,       TrueGeoAcc, Pi0Pcm, "mc/corr/h6_mix_trueGeoAcc_pi0"},
-      {PlainPt,      TrueGeoAcc, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_trueGeoAcc_eta"},
-      {Correlation,  TrueGeoAcc, EtaPcm, "mc/corr/h6_corr_trueGeoAcc_eta"},
-      {Mixing,       TrueGeoAcc, EtaPcm, "mc/corr/h6_mix_trueGeoAcc_eta"}
-    });
-  }();
+  // mc true++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([](){})>
   void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = {}) {
@@ -1720,11 +1654,11 @@ struct HadronPhotonCorrelation {
     if (assocParticle.isPhysicalPrimary()) {
       // hadron (charged primary)
       if (isCharged(assocParticle)) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::Hadron>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevelV, AssocType::Hadron>(histFillInfo);
       }
       // pipm
       if (std::abs(assocParticle.pdgCode()) == PDG_t::kPiPlus) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::Pipm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevelV, AssocType::Pipm>(histFillInfo);
         return;
       }
       // photon
@@ -1732,7 +1666,7 @@ struct HadronPhotonCorrelation {
         // mc-to-data scaling
         histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::PhotonPcm>(assocParticle.pt());
 
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonPcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonPcm>(histFillInfo);
 
         // extra info for decay correlation only for total true level
         if constexpr (TruthLevelV == TruthLevel::True) {
@@ -1742,28 +1676,28 @@ struct HadronPhotonCorrelation {
           int const statusDirect = 62;
 
           if (std::abs(assocParticle.getGenStatusCode()) >= statusDecayLow && std::abs(assocParticle.getGenStatusCode()) <= statusDecayUp) {
-            fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonDecay>(histFillInfo);
+            fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonDecay>(histFillInfo);
             // decays from different mothers
             int const pdgMother = assocParticle.template mothers_as<aod::JetParticles>().begin()->pdgCode();
             switch (pdgMother) {
               case PDG_t::kPi0:
-                fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonPi0>(histFillInfo);
+                fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonPi0>(histFillInfo);
                 break;
               case constants::physics::Pdg::kEta:
-                fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonEta>(histFillInfo);
+                fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonEta>(histFillInfo);
                 break;
               case constants::physics::Pdg::kOmega:
-                fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonOmega>(histFillInfo);
+                fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonOmega>(histFillInfo);
                 break;
               case constants::physics::Pdg::kEtaPrime:
-                fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonEtaPrime>(histFillInfo);
+                fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonEtaPrime>(histFillInfo);
                 break;
               default:
-                fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonOtherMother>(histFillInfo);
+                fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonOtherMother>(histFillInfo);
                 break;
             }
           } else {
-            fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::PhotonDirect>(histFillInfo);
+            fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonDirect>(histFillInfo);
             // log unexpected status
             if (assocParticle.getGenStatusCode() != statusDirect) {
               LOGF(info, "filled direct photon with status: %i", assocParticle.getGenStatusCode());
@@ -1784,7 +1718,7 @@ struct HadronPhotonCorrelation {
       histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(assocParticle.pt());
 
       if constexpr (TruthLevelV == TruthLevel::True) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::Pi0Pcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::Pi0Pcm>(histFillInfo);
       }
       // self trigger
       if constexpr (HistFillModeV == HistFillMode::Plain) {
@@ -1799,19 +1733,19 @@ struct HadronPhotonCorrelation {
       } else {
         static_assert(AlwaysFalseValue<HistFillModeV>, "histFillMode not found");
       }
-      fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::Pi0Pcm>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevelV, AssocType::Pi0Pcm>(histFillInfo);
       // decaying particles extra info
       if constexpr (TruthLevelV == TruthLevel::TrueAssocEvRecoPtTrig) {
         // chosen decay
         if (!isDecayToGG(assocParticle)) {
           return;
         }
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::Pi0Pcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::Pi0Pcm>(histFillInfo);
         // daughters in acceptance
         if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
           return;
         }
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::Pi0Pcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::Pi0Pcm>(histFillInfo);
       }
       return;
     }
@@ -1821,7 +1755,7 @@ struct HadronPhotonCorrelation {
       histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::EtaPcm>(assocParticle.pt());
 
       if constexpr (TruthLevelV == TruthLevel::True) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::EtaPcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::EtaPcm>(histFillInfo);
       }
       // self trigger
       if constexpr (HistFillModeV == HistFillMode::Plain) {
@@ -1836,19 +1770,19 @@ struct HadronPhotonCorrelation {
       } else {
         static_assert(AlwaysFalseValue<HistFillModeV>, "histFillMode not found");
       }
-      fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::EtaPcm>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevelV, AssocType::EtaPcm>(histFillInfo);
       // decaying particles extra info
       if constexpr (TruthLevelV == TruthLevel::TrueAssocEvRecoPtTrig) {
         // chosen decay
         if (!isDecayToGG(assocParticle)) {
           return;
         }
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::EtaPcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::EtaPcm>(histFillInfo);
         // daughters in acceptance
         if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
           return;
         }
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::EtaPcm>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::EtaPcm>(histFillInfo);
       }
       return;
     }
@@ -1857,12 +1791,12 @@ struct HadronPhotonCorrelation {
     if constexpr (TruthLevelV == TruthLevel::True) {
       // omega
       if (assocParticle.pdgCode() == constants::physics::Pdg::kOmega) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::Omega>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevelV, AssocType::Omega>(histFillInfo);
         return;
       }
       // etaPrime
       if (assocParticle.pdgCode() == constants::physics::Pdg::kEtaPrime) {
-        fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevelV, AssocType::EtaPrime>(histFillInfo);
+        fillHistMain<HistFillModeV, TruthLevelV, AssocType::EtaPrime>(histFillInfo);
         return;
       }
     }
@@ -2066,53 +2000,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueAssocEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
 
-  // standard mc reco++ histogram compile-time paths
-  static constexpr auto HistPathsMcRecoStd = []() {
-    using enum HistFillMode;
-    using enum TruthLevel;
-    using enum AssocType;
-
-    return std::to_array<HistPathEntry>({
-      {PlainPhiEta,  RecoAssocEv, Hadron,    "mc/plain/h4_ptTrigPtAssocPhiEta_recoAssocEv_hadron"},
-      {PlainZPvMult, RecoAssocEv, Hadron,    "mc/plain/h4_ptTrigPtAssocZPvMult_recoAssocEv_hadron"},
-      {Correlation,  RecoAssocEv, Hadron,    "mc/corr/h6_corr_recoAssocEv_hadron"},
-      {Mixing,       RecoAssocEv, Hadron,    "mc/corr/h6_mix_recoAssocEv_hadron"},
-      {PlainPhiEta,  RecoAssocEv, Pipm,      "mc/plain/h4_ptTrigPtAssocPhiEta_recoAssocEv_pipm"},
-      {PlainZPvMult, RecoAssocEv, Pipm,      "mc/plain/h4_ptTrigPtAssocZPvMult_recoAssocEv_pipm"},
-      {Correlation,  RecoAssocEv, Pipm,      "mc/corr/h6_corr_recoAssocEv_pipm"},
-      {Mixing,       RecoAssocEv, Pipm,      "mc/corr/h6_mix_recoAssocEv_pipm"},
-      {PlainPhiEta,  RecoAssocEv, PhotonPcm, "mc/plain/h4_ptTrigPtAssocPhiEta_recoAssocEv_photonPcm"},
-      {PlainZPvMult, RecoAssocEv, PhotonPcm, "mc/plain/h4_ptTrigPtAssocZPvMult_recoAssocEv_photonPcm"},
-      {Correlation,  RecoAssocEv, PhotonPcm, "mc/corr/h6_corr_recoAssocEv_photonPcm"},
-      {Mixing,       RecoAssocEv, PhotonPcm, "mc/corr/h6_mix_recoAssocEv_photonPcm"},
-
-      {PlainPhiEta,  RecoPure, Hadron,    "mc/plain/h4_ptTrigPtAssocPhiEta_recoPure_hadron"},
-      {PlainZPvMult, RecoPure, Hadron,    "mc/plain/h4_ptTrigPtAssocZPvMult_recoPure_hadron"},
-      {Correlation,  RecoPure, Hadron,    "mc/corr/h6_corr_recoPure_hadron"},
-      {Mixing,       RecoPure, Hadron,    "mc/corr/h6_mix_recoPure_hadron"},
-      {PlainPhiEta,  RecoPure, Pipm,      "mc/plain/h4_ptTrigPtAssocPhiEta_recoPure_pipm"},
-      {PlainZPvMult, RecoPure, Pipm,      "mc/plain/h4_ptTrigPtAssocZPvMult_recoPure_pipm"},
-      {Correlation,  RecoPure, Pipm,      "mc/corr/h6_corr_recoPure_pipm"},
-      {Mixing,       RecoPure, Pipm,      "mc/corr/h6_mix_recoPure_pipm"},
-      {PlainPhiEta,  RecoPure, PhotonPcm, "mc/plain/h4_ptTrigPtAssocPhiEta_recoPure_photonPcm"},
-      {PlainZPvMult, RecoPure, PhotonPcm, "mc/plain/h4_ptTrigPtAssocZPvMult_recoPure_photonPcm"},
-      {Correlation,  RecoPure, PhotonPcm, "mc/corr/h6_corr_recoPure_photonPcm"},
-      {Mixing,       RecoPure, PhotonPcm, "mc/corr/h6_mix_recoPure_photonPcm"},
-
-      {PlainPhiEta,  RecoPureTruePtAssoc, Hadron,    "mc/plain/h4_ptTrigPtAssocPhiEta_recoPureTruePtAssoc_hadron"},
-      {PlainZPvMult, RecoPureTruePtAssoc, Hadron,    "mc/plain/h4_ptTrigPtAssocZPvMult_recoPureTruePtAssoc_hadron"},
-      {Correlation,  RecoPureTruePtAssoc, Hadron,    "mc/corr/h6_corr_recoPureTruePtAssoc_hadron"},
-      {Mixing,       RecoPureTruePtAssoc, Hadron,    "mc/corr/h6_mix_recoPureTruePtAssoc_hadron"},
-      {PlainPhiEta,  RecoPureTruePtAssoc, Pipm,      "mc/plain/h4_ptTrigPtAssocPhiEta_recoPureTruePtAssoc_pipm"},
-      {PlainZPvMult, RecoPureTruePtAssoc, Pipm,      "mc/plain/h4_ptTrigPtAssocZPvMult_recoPureTruePtAssoc_pipm"},
-      {Correlation,  RecoPureTruePtAssoc, Pipm,      "mc/corr/h6_corr_recoPureTruePtAssoc_pipm"},
-      {Mixing,       RecoPureTruePtAssoc, Pipm,      "mc/corr/h6_mix_recoPureTruePtAssoc_pipm"},
-      {PlainPhiEta,  RecoPureTruePtAssoc, PhotonPcm, "mc/plain/h4_ptTrigPtAssocPhiEta_recoPureTruePtAssoc_photonPcm"},
-      {PlainZPvMult, RecoPureTruePtAssoc, PhotonPcm, "mc/plain/h4_ptTrigPtAssocZPvMult_recoPureTruePtAssoc_photonPcm"},
-      {Correlation,  RecoPureTruePtAssoc, PhotonPcm, "mc/corr/h6_corr_recoPureTruePtAssoc_photonPcm"},
-      {Mixing,       RecoPureTruePtAssoc, PhotonPcm, "mc/corr/h6_mix_recoPureTruePtAssoc_photonPcm"}
-    });
-  }();
+  // standard mc reco++ :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
   void fillTruthLevelsMcRecoStd(auto histFillInfo, auto const& collision, auto const& associated) {
@@ -2127,15 +2015,15 @@ struct HadronPhotonCorrelation {
     if (!checkTruthLevelReco<TruthLevel::RecoAssocEv, AssocTypeV>(associated)) {
       return;
     }
-    fillHistMain<HistPathsMcRecoStd, HistFillModeV, TruthLevel::RecoAssocEv, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::RecoAssocEv, AssocTypeV>(histFillInfo);
     // purity
     if (!checkTruthLevelReco<TruthLevel::RecoPure, AssocTypeV>(associated)) {
       return;
     }
-    fillHistMain<HistPathsMcRecoStd, HistFillModeV, TruthLevel::RecoPure, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::RecoPure, AssocTypeV>(histFillInfo);
     // true ptAssoc
     histFillInfo.ptAssoc = associated.ptTruePure();
-    fillHistMain<HistPathsMcRecoStd, HistFillModeV, TruthLevel::RecoPureTruePtAssoc, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::RecoPureTruePtAssoc, AssocTypeV>(histFillInfo);
   }
 
   template <AssocType AssocTypeV>
@@ -2228,42 +2116,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPhotonPcm, "process standard for associated photonPcm with additional mc information", false);
 
-  // photonPcmPair mc reco++ histogram compile-time paths
-  static constexpr auto HistPathsMcRecoPhotonPcmPair = []() {
-    using enum HistFillMode;
-    using enum TruthLevel;
-    using enum AssocType;
-
-    return std::to_array<HistPathEntry>({
-      {PlainPt,     PseudoReco, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_pseudoReco_pi0Pcm"},
-      {Correlation, PseudoReco, Pi0Pcm, "mc/corr/h6_corr_pseudoReco_pi0Pcm"},
-      {Mixing,      PseudoReco, Pi0Pcm, "mc/corr/h6_mix_pseudoReco_pi0Pcm"},
-      {PlainPt,     PseudoReco, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_pseudoReco_etaPcm"},
-      {Correlation, PseudoReco, EtaPcm, "mc/corr/h6_corr_pseudoReco_etaPcm"},
-      {Mixing,      PseudoReco, EtaPcm, "mc/corr/h6_mix_pseudoReco_etaPcm"},
-
-      {PlainPt,     PseudoRecoAssocEv, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoAssocEv_pi0Pcm"},
-      {Correlation, PseudoRecoAssocEv, Pi0Pcm, "mc/corr/h6_corr_pseudoRecoAssocEv_pi0Pcm"},
-      {Mixing,      PseudoRecoAssocEv, Pi0Pcm, "mc/corr/h6_mix_pseudoRecoAssocEv_pi0Pcm"},
-      {PlainPt,     PseudoRecoAssocEv, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoAssocEv_etaPcm"},
-      {Correlation, PseudoRecoAssocEv, EtaPcm, "mc/corr/h6_corr_pseudoRecoAssocEv_etaPcm"},
-      {Mixing,      PseudoRecoAssocEv, EtaPcm, "mc/corr/h6_mix_pseudoRecoAssocEv_etaPcm"},
-
-      {PlainPt,     PseudoRecoPure, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoPure_pi0Pcm"},
-      {Correlation, PseudoRecoPure, Pi0Pcm, "mc/corr/h6_corr_pseudoRecoPure_pi0Pcm"},
-      {Mixing,      PseudoRecoPure, Pi0Pcm, "mc/corr/h6_mix_pseudoRecoPure_pi0Pcm"},
-      {PlainPt,     PseudoRecoPure, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoPure_etaPcm"},
-      {Correlation, PseudoRecoPure, EtaPcm, "mc/corr/h6_corr_pseudoRecoPure_etaPcm"},
-      {Mixing,      PseudoRecoPure, EtaPcm, "mc/corr/h6_mix_pseudoRecoPure_etaPcm"},
-
-      {PlainPt,     PseudoRecoPureTruePtAssoc, Pi0Pcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoPureTruePtAssoc_pi0Pcm"},
-      {Correlation, PseudoRecoPureTruePtAssoc, Pi0Pcm, "mc/corr/h6_corr_pseudoRecoPureTruePtAssoc_pi0Pcm"},
-      {Mixing,      PseudoRecoPureTruePtAssoc, Pi0Pcm, "mc/corr/h6_mix_pseudoRecoPureTruePtAssoc_pi0Pcm"},
-      {PlainPt,     PseudoRecoPureTruePtAssoc, EtaPcm, "mc/plain/h2_ptTrigPtAssoc_pseudoRecoPureTruePtAssoc_etaPcm"},
-      {Correlation, PseudoRecoPureTruePtAssoc, EtaPcm, "mc/corr/h6_corr_pseudoRecoPureTruePtAssoc_etaPcm"},
-      {Mixing,      PseudoRecoPureTruePtAssoc, EtaPcm, "mc/corr/h6_mix_pseudoRecoPureTruePtAssoc_etaPcm"}
-    });
-  }();
+  // photonPcmPair mc reco++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
   void fillTruthLevelsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated) {
@@ -2278,15 +2131,15 @@ struct HadronPhotonCorrelation {
     if (!checkTruthLevelReco<TruthLevel::PseudoRecoAssocEv, AssocTypeV>(associated)) {
       return;
     }
-    fillHistMain<HistPathsMcRecoPhotonPcmPair, HistFillModeV, TruthLevel::PseudoRecoAssocEv, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::PseudoRecoAssocEv, AssocTypeV>(histFillInfo);
     // purity
     if (!checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocTypeV>(associated)) {
       return;
     }
-    fillHistMain<HistPathsMcRecoPhotonPcmPair, HistFillModeV, TruthLevel::PseudoRecoPure, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::PseudoRecoPure, AssocTypeV>(histFillInfo);
     // true ptAssoc
     histFillInfo.ptAssoc = associated.ptTruePure();
-    fillHistMain<HistPathsMcRecoPhotonPcmPair, HistFillModeV, TruthLevel::PseudoRecoPureTruePtAssoc, AssocTypeV>(histFillInfo);
+    fillHistMain<HistFillModeV, TruthLevel::PseudoRecoPureTruePtAssoc, AssocTypeV>(histFillInfo);
   }
 
   template <HistFillMode HistFillModeV>
@@ -2308,7 +2161,7 @@ struct HadronPhotonCorrelation {
 
       // mgg distribution
 
-      fillHistMain<HistPathsMcRecoPhotonPcmPair, HistFillModeV, TruthLevel::PseudoReco, AssocType::Pi0Pcm>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::PseudoReco, AssocType::Pi0Pcm>(histFillInfo);
 
       fillTruthLevelsMcRecoPhotonPcmPair<HistFillModeV, AssocType::Pi0Pcm>(histFillInfo, collision, associated);
       return;
@@ -2328,7 +2181,7 @@ struct HadronPhotonCorrelation {
                     histFillInfo.weight);
       }
 
-      fillHistMain<HistPathsMcRecoPhotonPcmPair, HistFillModeV, TruthLevel::PseudoReco, AssocType::EtaPcm>(histFillInfo);
+      fillHistMain<HistFillModeV, TruthLevel::PseudoReco, AssocType::EtaPcm>(histFillInfo);
 
       fillTruthLevelsMcRecoPhotonPcmPair<HistFillModeV, AssocType::EtaPcm>(histFillInfo, collision, associated);
       return;

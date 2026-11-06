@@ -64,6 +64,31 @@ enum class TruthLevel : int {
   True = 13,
   TrueDecaySelfTrig = 14
 };
+// true level: associated particles taken from mc truth
+constexpr bool isTrueLevel(TruthLevel const truthLevel)
+{
+  switch (truthLevel) {
+    case TruthLevel::Unknown:
+    case TruthLevel::Reco:
+    case TruthLevel::RecoMcMatched:
+    case TruthLevel::RecoAssocEv:
+    case TruthLevel::RecoPure:
+    case TruthLevel::RecoPureTruePtAssoc:
+    case TruthLevel::PseudoReco:
+    case TruthLevel::PseudoRecoAssocEv:
+    case TruthLevel::PseudoRecoPure:
+    case TruthLevel::PseudoRecoPureTruePtAssoc:
+      return false;
+    case TruthLevel::TrueGeoAcc:
+    case TruthLevel::TrueMeasDecay:
+    case TruthLevel::TrueAssocEvRecoPtTrig:
+    case TruthLevel::TrueAssocEv:
+    case TruthLevel::True:
+    case TruthLevel::TrueDecaySelfTrig:
+      return true;
+  }
+  return false;
+}
 
 enum class PhotonImpurity : int {
   Unknown = -1,
