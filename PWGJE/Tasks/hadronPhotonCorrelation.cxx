@@ -93,59 +93,62 @@ const double absEtaMaxDefault = 0.8;
 struct HadronPhotonCorrelation {
   // configurables
 
-  // general (kenobi)
-  Configurable<std::string> pathCcdbAnalysis{"pathCcdbAnalysis", "Users/j/jkinner/analysis/set_in_config", "base path to the ccdb for analysis objects"};
-  Configurable<std::string> urlCcdb{"urlCcdb", "http://alice-ccdb.cern.ch", "url of the ccdb repository"};
-  Configurable<int64_t> noLaterThanCcdbConfig{"noLaterThanCcdbConfig", -1, "latest acceptable timestamp of creation for the object (-1 for task start time)"};
+  // main config
+  struct : o2::framework::ConfigurableGroup {
+    // general (kenobi)
+    Configurable<std::string> pathCcdbAnalysis{"pathCcdbAnalysis", "Users/j/jkinner/analysis/set_in_config", "base path to the ccdb for analysis objects"};
+    Configurable<std::string> urlCcdb{"urlCcdb", "http://alice-ccdb.cern.ch", "url of the ccdb repository"};
+    Configurable<int64_t> noLaterThanCcdbConfig{"noLaterThanCcdbConfig", -1, "latest acceptable timestamp of creation for the object (-1 for task start time)"};
 
-  // shared across analysis tasks
-  Configurable<double> absEtaMax{"absEtaMax", 0.8, "maximum absEta cut"};
-  Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pT of triggers"};
+    // shared across analysis tasks
+    Configurable<double> absEtaMax{"absEtaMax", 0.8, "maximum absEta cut"};
+    Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pT of triggers"};
 
-  // analysis settings
-  Configurable<int> splitMcEvN{"splitMcEvN", 1, "number of event fractions for selection in MC (max 10) | (select 1 for data)"};
-  Configurable<int> splitMcEvSelect{"splitMcEvSelect", 1, "selected event fraction number in MC (starts at 1) | (select 1 for data)"};
+    // analysis settings
+    Configurable<int> splitMcEvN{"splitMcEvN", 1, "number of event fractions for selection in MC (max 10) | (select 1 for data)"};
+    Configurable<int> splitMcEvSelect{"splitMcEvSelect", 1, "selected event fraction number in MC (starts at 1) | (select 1 for data)"};
 
-  // mc scaling to data
-  // caution: applied to true-level very broadly, full mc-true possibly inconsistent (e.g. gammaDir scaled as well), only use for correcting
-  Configurable<bool> applyScalingPhotonPt{"applyScalingPhotonPt", false, "apply photon mc scaling factor"};
-  Configurable<std::vector<double>> ptRangeScalingPhoton{"ptRangeScalingPhoton", {0.5, 15}, "pt for photon mc scaling factor using tcm, switching to constant outside"};
-  Configurable<std::vector<double>> parScalingPhotonPtData{"parScalingPhotonPtData", {}, "tcm params, corrected data, photonPcm"};
-  Configurable<std::vector<double>> parScalingPhotonPtMc{"parScalingPhotonPtMc", {}, "tcm params, mc gen, photonPcm"};
-  Configurable<bool> applyScalingPi0Pt{"applyScalingPi0Pt", false, "apply pi0 mc scaling factor"};
-  Configurable<std::vector<double>> ptRangeScalingPi0{"ptRangeScalingPi0", {0.5, 10}, "pt for pi0 mc scaling factor using tcm, switching to constant outside"};
-  Configurable<std::vector<double>> parScalingPi0PtData{"parScalingPi0PtData", {}, "tcm params, corrected data, pi0Pcm"};
-  Configurable<std::vector<double>> parScalingPi0PtMc{"parScalingPi0PtMc", {}, "tcm params, mc gen, pi0Pcm"};
-  Configurable<bool> applyScalingEtaPt{"applyScalingEtaPt", false, "apply eta mc scaling factor"};
-  Configurable<std::vector<double>> ptRangeScalingEta{"ptRangeScalingEta", {1.0, 10}, "pt for eta mc scaling factor using tcm, switching to constant outside"};
-  Configurable<std::vector<double>> parScalingEtaPtData{"parScalingEtaPtData", {}, "tcm params, corrected data, etaPcm"};
-  Configurable<std::vector<double>> parScalingEtaPtMc{"parScalingEtaPtMc", {}, "tcm params, mc gen, etaPcm"};
-  // scalings and corrections applied to reco
-  Configurable<bool> applyScalingK0ShortPt{"applyScalingK0ShortPt", false, "apply K0Short mc scaling factor"};
-  Configurable<bool> applyTriggerPtCorrection{"applyTriggerPtCorrection", false, "whether to apply on-the-fly total correction factor for triggers"};
+    // mc scaling to data
+    // caution: applied to true-level very broadly, full mc-true possibly inconsistent (e.g. gammaDir scaled as well), only use for correcting
+    Configurable<bool> applyScalingPhotonPt{"applyScalingPhotonPt", false, "apply photon mc scaling factor"};
+    Configurable<std::vector<double>> ptRangeScalingPhoton{"ptRangeScalingPhoton", {0.5, 15}, "pt for photon mc scaling factor using tcm, switching to constant outside"};
+    Configurable<std::vector<double>> parScalingPhotonPtData{"parScalingPhotonPtData", {}, "tcm params, corrected data, photonPcm"};
+    Configurable<std::vector<double>> parScalingPhotonPtMc{"parScalingPhotonPtMc", {}, "tcm params, mc gen, photonPcm"};
+    Configurable<bool> applyScalingPi0Pt{"applyScalingPi0Pt", false, "apply pi0 mc scaling factor"};
+    Configurable<std::vector<double>> ptRangeScalingPi0{"ptRangeScalingPi0", {0.5, 10}, "pt for pi0 mc scaling factor using tcm, switching to constant outside"};
+    Configurable<std::vector<double>> parScalingPi0PtData{"parScalingPi0PtData", {}, "tcm params, corrected data, pi0Pcm"};
+    Configurable<std::vector<double>> parScalingPi0PtMc{"parScalingPi0PtMc", {}, "tcm params, mc gen, pi0Pcm"};
+    Configurable<bool> applyScalingEtaPt{"applyScalingEtaPt", false, "apply eta mc scaling factor"};
+    Configurable<std::vector<double>> ptRangeScalingEta{"ptRangeScalingEta", {1.0, 10}, "pt for eta mc scaling factor using tcm, switching to constant outside"};
+    Configurable<std::vector<double>> parScalingEtaPtData{"parScalingEtaPtData", {}, "tcm params, corrected data, etaPcm"};
+    Configurable<std::vector<double>> parScalingEtaPtMc{"parScalingEtaPtMc", {}, "tcm params, mc gen, etaPcm"};
+    // scalings and corrections applied to reco
+    Configurable<bool> applyScalingK0ShortPt{"applyScalingK0ShortPt", false, "apply K0Short mc scaling factor"};
+    Configurable<bool> applyTriggerPtCorrection{"applyTriggerPtCorrection", false, "whether to apply on-the-fly total correction factor for triggers"};
 
-  Configurable<bool> doTrigEvMixing{"doTrigEvMixing", false, "whether to use trigger events for trigger mixing"};
+    Configurable<bool> doTrigEvMixing{"doTrigEvMixing", false, "whether to use trigger events for trigger mixing"};
 
-  Configurable<int> nTriggerSavedForMixing{"nTriggerSavedForMixing", 8192, "number of triggers that are saved for mixing with other events"};
-  Configurable<int> nTriggerBinMinThreshold{"nTriggerBinMinThreshold", 4, "threshold minimum number of triggers in mixing bin required"};
-  Configurable<double> iTriggerStartFraction{"iTriggerStartFraction", 0.5, "ratio of bin size for randomised iTrigger start"};
-  Configurable<double> nTriggerScaleCoefficient{"nTriggerScaleCoefficient", 1, "coeffcient a in mixing-number pt power scaling"};
-  Configurable<double> nTriggerScaleExponent{"nTriggerScaleExponent", 2, "exponent a in mixing-number pt power scaling"};
-  Configurable<int> nMixingAt0McTrue{"nMixingAt0McTrue", 1, "number of triggers that are used for mc true mixing"};
-  Configurable<int> nMixingAt0Hadron{"nMixingAt0Hadron", 16, "number of triggers that are used for hadron mixing"};
-  Configurable<int> nMixingAt0Pipm{"nMixingAt0Pipm", 16, "number of triggers that are used for pipm mixing"};
-  Configurable<int> nMixingAt0PhotonPcm{"nMixingAt0PhotonPcm", 256, "number of triggers that are saved for photonPcm mixing"};
-  Configurable<int> nMixingAt0PhotonPcmPair{"nMixingAt0PhotonPcmPair", 1024, "number of triggers that are saved for photonPcmPair (pi0, eta) mixing"};
+    Configurable<int> nTriggerSavedForMixing{"nTriggerSavedForMixing", 8192, "number of triggers that are saved for mixing with other events"};
+    Configurable<int> nTriggerBinMinThreshold{"nTriggerBinMinThreshold", 4, "threshold minimum number of triggers in mixing bin required"};
+    Configurable<double> iTriggerStartFraction{"iTriggerStartFraction", 0.5, "ratio of bin size for randomised iTrigger start"};
+    Configurable<double> nTriggerScaleCoefficient{"nTriggerScaleCoefficient", 1, "coeffcient a in mixing-number pt power scaling"};
+    Configurable<double> nTriggerScaleExponent{"nTriggerScaleExponent", 2, "exponent a in mixing-number pt power scaling"};
+    Configurable<int> nMixingAt0McTrue{"nMixingAt0McTrue", 1, "number of triggers that are used for mc true mixing"};
+    Configurable<int> nMixingAt0Hadron{"nMixingAt0Hadron", 16, "number of triggers that are used for hadron mixing"};
+    Configurable<int> nMixingAt0Pipm{"nMixingAt0Pipm", 16, "number of triggers that are used for pipm mixing"};
+    Configurable<int> nMixingAt0PhotonPcm{"nMixingAt0PhotonPcm", 256, "number of triggers that are saved for photonPcm mixing"};
+    Configurable<int> nMixingAt0PhotonPcmPair{"nMixingAt0PhotonPcmPair", 1024, "number of triggers that are saved for photonPcmPair (pi0, eta) mixing"};
 
-  Configurable<int> nNeighboursMixingPhotonPcmPair{"nNeighboursMixingPhotonPcmPair", 32, "number neighbours used for for photonPcm pair mixing"};
+    Configurable<int> nNeighboursMixingPhotonPcmPair{"nNeighboursMixingPhotonPcmPair", 32, "number neighbours used for for photonPcm pair mixing"};
 
-  Configurable<std::vector<double>> pi0PcmPeakMassRange{"pi0PcmPeakMassRange", {0.10, 0.15}, "photon-pair mass integration range for pi0Pcm"};
-  Configurable<std::vector<double>> pi0PcmSideMassRange{"pi0PcmSideMassRange", {0.16, 0.22}, "photon-pair mass integration range outside pi0Pcm region"};
-  Configurable<std::vector<double>> etaPcmPeakMassRange{"etaPcmPeakMassRange", {0.51, 0.56}, "photon-pair mass integration range for etaPcm"};
-  Configurable<std::vector<double>> etaPcmLowSideMassRange{"etaPcmLowSideMassRange", {0.44, 0.48}, "photon-pair mass integration range below etaPcm region"};
-  Configurable<std::vector<double>> etaPcmHighSideMassRange{"etaPcmHighSideMassRange", {0.58, 0.62}, "photon-pair mass integration range above etaPcm region"};
+    Configurable<std::vector<double>> pi0PcmPeakMassRange{"pi0PcmPeakMassRange", {0.10, 0.15}, "photon-pair mass integration range for pi0Pcm"};
+    Configurable<std::vector<double>> pi0PcmSideMassRange{"pi0PcmSideMassRange", {0.16, 0.22}, "photon-pair mass integration range outside pi0Pcm region"};
+    Configurable<std::vector<double>> etaPcmPeakMassRange{"etaPcmPeakMassRange", {0.51, 0.56}, "photon-pair mass integration range for etaPcm"};
+    Configurable<std::vector<double>> etaPcmLowSideMassRange{"etaPcmLowSideMassRange", {0.44, 0.48}, "photon-pair mass integration range below etaPcm region"};
+    Configurable<std::vector<double>> etaPcmHighSideMassRange{"etaPcmHighSideMassRange", {0.58, 0.62}, "photon-pair mass integration range above etaPcm region"};
 
-  Configurable<double> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
+    Configurable<double> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
+  } config;
 
   // pcm cuts
   struct : o2::framework::ConfigurableGroup {
@@ -466,25 +469,25 @@ struct HadronPhotonCorrelation {
   void initCcdbHistograms(int64_t const noLaterThanCcdb)
   {
     // trigger
-    if (applyTriggerPtCorrection) {
-      h1PtCorrectionTrigger = ccdb->getForTimeStamp<TH1D>(pathCcdbAnalysis.value + "/correction/trigger", noLaterThanCcdb);
+    if (config.applyTriggerPtCorrection.value) {
+      h1PtCorrectionTrigger = ccdb->getForTimeStamp<TH1D>(config.pathCcdbAnalysis.value + "/correction/trigger", noLaterThanCcdb);
 
       const double* bins = h1PtCorrectionTrigger->GetXaxis()->GetXbins()->GetArray();
       const AxisSpec axis{std::vector<double>(bins, bins + h1PtCorrectionTrigger->GetNbinsX() + 1), "#it{p}_{T}"};
       histos.add("usedObjectsCcdb/h1_pt_correction_trigger_ccdb", "h1_pt_correction_trigger_ccdb", kTH1D, {axis}, true);
-      for (int iBin = 1; iBin <= h1PtCorrectionTrigger->GetNbinsX(); iBin++) {
+      for (int iBin = 0; iBin <= h1PtCorrectionTrigger->GetNbinsX() + 1; iBin++) {
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_correction_trigger_ccdb"))->SetBinContent(iBin, h1PtCorrectionTrigger->GetBinContent(iBin));
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_correction_trigger_ccdb"))->SetBinError(iBin, h1PtCorrectionTrigger->GetBinError(iBin));
       }
     }
     // K0Short
-    if (applyScalingK0ShortPt) {
-      h1PtScalingK0Short = ccdb->getForTimeStamp<TH1D>(pathCcdbAnalysis.value + "/scaling/K0Short", noLaterThanCcdb);
+    if (config.applyScalingK0ShortPt.value) {
+      h1PtScalingK0Short = ccdb->getForTimeStamp<TH1D>(config.pathCcdbAnalysis.value + "/scaling/K0Short", noLaterThanCcdb);
 
       const double* bins = h1PtScalingK0Short->GetXaxis()->GetXbins()->GetArray();
       const AxisSpec axis{std::vector<double>(bins, bins + h1PtScalingK0Short->GetNbinsX() + 1), "#it{p}_{T}"};
       histos.add("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb", "h1_pt_scaling_K0Short_ccdb", kTH1D, {axis}, true);
-      for (int iBin = 1; iBin <= h1PtScalingK0Short->GetNbinsX(); iBin++) {
+      for (int iBin = 0; iBin <= h1PtScalingK0Short->GetNbinsX() + 1; iBin++) {
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb"))->SetBinContent(iBin, h1PtScalingK0Short->GetBinContent(iBin));
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb"))->SetBinError(iBin, h1PtScalingK0Short->GetBinError(iBin));
       }
@@ -502,7 +505,7 @@ struct HadronPhotonCorrelation {
     const AxisSpec axisMult{configHist.nBinsMultPlain + 1, -0.5, configHist.nBinsMultPlain + 0.5, "multiplicity"};
 
     const AxisSpec axisPhi{configHist.nBinsPhi, 0, constants::math::TwoPI, "#it{#varphi}"};
-    const AxisSpec axisEta{configHist.nBinsEta, -absEtaMax, absEtaMax, "#it{#eta}"};
+    const AxisSpec axisEta{configHist.nBinsEta, -config.absEtaMax.value, config.absEtaMax.value, "#it{#eta}"};
     const AxisSpec axisDcaZ{configHist.nBinsDcaZ, -5, 5, "DCA_{z}"};
     const AxisSpec axisMgg{configHist.nBinsMgg, 0, 0.8, "#it{m}_{#gamma#gamma}"};
 
@@ -669,7 +672,7 @@ struct HadronPhotonCorrelation {
   bool checkSplitMcEventSelection(auto const& collision)
   {
     // select based on configurables
-    return collision.thirdDecimalTruePosZ() % splitMcEvN == splitMcEvSelect - 1;
+    return collision.thirdDecimalTruePosZ() % config.splitMcEvN.value == config.splitMcEvSelect.value - 1;
   }
 
   // total event selection (basic selections from producer and analysis level selections)
@@ -736,7 +739,7 @@ struct HadronPhotonCorrelation {
       }
       // check valid associated particle
       if ((*mother).pdgCode() == pdgCode || (*mother).pdgCode() == -pdgCode) {
-        if (std::abs((*mother).eta()) < absEtaMax && isDecayPrimary(*mother)) {
+        if (std::abs((*mother).eta()) < config.absEtaMax.value && isDecayPrimary(*mother)) {
           return true;
         }
       }
@@ -925,7 +928,7 @@ struct HadronPhotonCorrelation {
     double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
     double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
     double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
-    return energyAsym < energyAsymmPhotonPairMax;
+    return energyAsym < config.energyAsymmPhotonPairMax.value;
   }
 
   // add pmeventId() due to unguarded call in V0PhotonCut.h qa; selection unaffected
@@ -1053,11 +1056,11 @@ struct HadronPhotonCorrelation {
       return ptWeightTcms(pt, parNum, parDenom);
     };
     if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      return applyScalingPhotonPt ? getWeight(ptTrue, ptRangeScalingPhoton, parScalingPhotonPtData, parScalingPhotonPtMc) : 1;
+      return config.applyScalingPhotonPt.value ? getWeight(ptTrue, config.ptRangeScalingPhoton.value, config.parScalingPhotonPtData.value, config.parScalingPhotonPtMc.value) : 1;
     } else if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
-      return applyScalingPi0Pt ? getWeight(ptTrue, ptRangeScalingPi0, parScalingPi0PtData, parScalingPi0PtMc) : 1;
+      return config.applyScalingPi0Pt.value ? getWeight(ptTrue, config.ptRangeScalingPi0.value, config.parScalingPi0PtData.value, config.parScalingPi0PtMc.value) : 1;
     } else if constexpr (AssocTypeV == AssocType::EtaPcm) {
-      return applyScalingEtaPt ? getWeight(ptTrue, ptRangeScalingEta, parScalingEtaPtData, parScalingEtaPtMc) : 1;
+      return config.applyScalingEtaPt.value ? getWeight(ptTrue, config.ptRangeScalingEta.value, config.parScalingEtaPtData.value, config.parScalingEtaPtMc.value) : 1;
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
@@ -1067,14 +1070,14 @@ struct HadronPhotonCorrelation {
     if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      if (!applyScalingPhotonPt) return 1;
+      if (!config.applyScalingPhotonPt.value) return 1;
       if (checkTruthLevelReco<TruthLevel::RecoPure, AssocTypeV>(associated)) {
         return getMcAssocPtScalingFromPt<AssocTypeV>(associated.ptTruePure());
       } else {
         return 1;
       }
     } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
-      if (!applyScalingPi0Pt && !applyScalingEtaPt) return 1;
+      if (!config.applyScalingPi0Pt.value && !config.applyScalingEtaPt.value) return 1;
       if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::Pi0Pcm>(associated)) {
         return getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(associated.ptTruePure());
       } else if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::EtaPcm>(associated)) {
@@ -1095,7 +1098,7 @@ struct HadronPhotonCorrelation {
 
   // K0Short mc scaling
   double getMcK0ShortPtScalingFromPt(double const ptTrue) {
-    return applyScalingK0ShortPt ? getH1ValueAt(h1PtScalingK0Short, ptTrue) : 1;
+    return config.applyScalingK0ShortPt.value ? getH1ValueAt(h1PtScalingK0Short, ptTrue) : 1;
   }
   template <AssocType AssocTypeV>
   double getMcK0ShortPtScaling (auto const& associated) {
@@ -1121,7 +1124,7 @@ struct HadronPhotonCorrelation {
   // correction trigger as function of pt
   double getTriggerPtCorrection(double const pt)
   {
-    return applyTriggerPtCorrection ? getH1ValueAt(h1PtCorrectionTrigger, pt) : 1;
+    return config.applyTriggerPtCorrection.value ? getH1ValueAt(h1PtCorrectionTrigger, pt) : 1;
   }
 
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
@@ -1135,14 +1138,14 @@ struct HadronPhotonCorrelation {
   bool isInMassRange(double const mgg)
   {
     if constexpr (AssocTypeV == AssocType::Pi0PcmPeak) {
-      return mgg > pi0PcmPeakMassRange.value[0] && mgg < pi0PcmPeakMassRange.value[1];
+      return mgg > config.pi0PcmPeakMassRange.value.at(0) && mgg < config.pi0PcmPeakMassRange.value.at(1);
     } else if constexpr (AssocTypeV == AssocType::Pi0PcmSide) {
-      return mgg > pi0PcmSideMassRange.value[0] && mgg < pi0PcmSideMassRange.value[1];
+      return mgg > config.pi0PcmSideMassRange.value.at(0) && mgg < config.pi0PcmSideMassRange.value.at(1);
     } else if constexpr (AssocTypeV == AssocType::EtaPcmPeak) {
-      return mgg > etaPcmPeakMassRange.value[0] && mgg < etaPcmPeakMassRange.value[1];
+      return mgg > config.etaPcmPeakMassRange.value.at(0) && mgg < config.etaPcmPeakMassRange.value.at(1);
     } else if constexpr (AssocTypeV == AssocType::EtaPcmSide) {
-      return (mgg > etaPcmLowSideMassRange.value[0] && mgg < etaPcmLowSideMassRange.value[1]) ||
-             (mgg > etaPcmHighSideMassRange.value[0] && mgg < etaPcmHighSideMassRange.value[1]);
+      return (mgg > config.etaPcmLowSideMassRange.value.at(0) && mgg < config.etaPcmLowSideMassRange.value.at(1)) ||
+             (mgg > config.etaPcmHighSideMassRange.value.at(0) && mgg < config.etaPcmHighSideMassRange.value.at(1));
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
@@ -1177,7 +1180,7 @@ struct HadronPhotonCorrelation {
   // mixing-number pt scaling with power law
   size_t nMixingPtPowerScaling(size_t const n0, double const pt)
   {
-    double const scale = 1 + nTriggerScaleCoefficient * std::pow(pt, nTriggerScaleExponent);
+    double const scale = 1 + config.nTriggerScaleCoefficient.value * std::pow(pt, config.nTriggerScaleExponent.value);
     return n0 * scale;
   }
 
@@ -1209,11 +1212,11 @@ struct HadronPhotonCorrelation {
       }
     }();
     // require enough mixing statistics
-    if (triggerMemoryBinSizeMin < static_cast<size_t>(nTriggerBinMinThreshold)) {
+    if (triggerMemoryBinSizeMin < static_cast<size_t>(config.nTriggerBinMinThreshold.value)) {
       return;
     }
     const size_t nSavedTriggers = savedTriggers.size();
-    const size_t iStartTrigger = randomIntInInterval(0, iTriggerStartFraction * nSavedTriggers);
+    const size_t iStartTrigger = randomIntInInterval(0, config.iTriggerStartFraction.value * nSavedTriggers);
     // associated loop
     for (auto const& associated : associatedThisEvent) {
       // trigger numbers
@@ -1235,8 +1238,8 @@ struct HadronPhotonCorrelation {
   {
     // analysis info
     int64_t const noLaterThanCcdb =
-      noLaterThanCcdbConfig == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : noLaterThanCcdbConfig;
-    ccdb->setURL(urlCcdb);
+      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : config.noLaterThanCcdbConfig.value;
+    ccdb->setURL(config.urlCcdb.value);
     // enabling object caching (otherwise each call goes to CCDB server)
     ccdb->setCaching(true);
     // ccdb->setLocalObjectValidityChecking();
@@ -1247,16 +1250,16 @@ struct HadronPhotonCorrelation {
 
     // check coherent config
     double const doublePrecisionDeltaCheck = 1e-5;
-    if (std::abs(ptTrigMin - configHist.binsPtTrig.value[0]) > doublePrecisionDeltaCheck) {
+    if (std::abs(config.ptTrigMin.value - configHist.binsPtTrig.value.at(0)) > doublePrecisionDeltaCheck) {
       throw std::runtime_error("ptTrigMin does not match trigger axis");
     }
-    if (parScalingPhotonPtData.value.size() != 6, parScalingPhotonPtMc.value.size() != 6) {
+    if (config.applyScalingPhotonPt.value && (config.parScalingPhotonPtData.value.size() != 6 || config.parScalingPhotonPtMc.value.size() != 6)) {
       throw std::runtime_error("wrong number of nc scaling params for photon");
     }
-    if (parScalingPi0PtData.value.size() != 6, parScalingPi0PtMc.value.size() != 6) {
+    if (config.applyScalingPi0Pt.value && (config.parScalingPi0PtData.value.size() != 6 || config.parScalingPi0PtMc.value.size() != 6)) {
       throw std::runtime_error("wrong number of nc scaling params for pi0");
     }
-    if (parScalingEtaPtData.value.size() != 6, parScalingEtaPtMc.value.size() != 6) {
+    if (config.applyScalingEtaPt.value && (config.parScalingEtaPtData.value.size() != 6 || config.parScalingEtaPtMc.value.size() != 6)) {
       throw std::runtime_error("wrong number of nc scaling params for eta");
     }
 
@@ -1267,10 +1270,10 @@ struct HadronPhotonCorrelation {
     initHistograms();
 
     // mixing trigger memory
-    triggerMemoryReco = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinning, configHist.binsMultBinning, nTriggerSavedForMixing);
-    triggerMemoryTrue = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue, configHist.binsMultBinningMcTrue, nTriggerSavedForMixing);
-    triggerMemoryTrueAssocEv = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue, configHist.binsMultBinningMcTrue, nTriggerSavedForMixing);
-    triggerMemoryTrueAssocEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue, configHist.binsMultBinningMcTrue, nTriggerSavedForMixing);
+    triggerMemoryReco = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinning.value, configHist.binsMultBinning.value, config.nTriggerSavedForMixing.value);
+    triggerMemoryTrue = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
+    triggerMemoryTrueAssocEv = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
+    triggerMemoryTrueAssocEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
 
     // init EM pcm cut class
     initV0PhotonCut();
@@ -1317,11 +1320,11 @@ struct HadronPhotonCorrelation {
       auto const triggersThisEvent = triggers.sliceBy(perColTriggers, collision.globalIndex());
       auto const [assocsThisEvent, nMixingAt0] = [&]() {
         if constexpr (AssocTypeV == AssocType::Hadron) {
-          return std::tuple{assocs.sliceBy(perColHadrons, collision.globalIndex()), nMixingAt0Hadron.value};
+          return std::tuple{assocs.sliceBy(perColHadrons, collision.globalIndex()), config.nMixingAt0Hadron.value};
         } else if constexpr (AssocTypeV == AssocType::Pipm) {
-          return std::tuple{assocs.sliceBy(perColPipms, collision.globalIndex()), nMixingAt0Pipm.value};
+          return std::tuple{assocs.sliceBy(perColPipms, collision.globalIndex()), config.nMixingAt0Pipm.value};
         } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-          return std::tuple{assocs.sliceBy(perColPhotonPcms, collision.globalIndex()), nMixingAt0PhotonPcm.value};
+          return std::tuple{assocs.sliceBy(perColPhotonPcms, collision.globalIndex()), config.nMixingAt0PhotonPcm.value};
         } else {
           static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not supported");
         }
@@ -1357,7 +1360,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -1496,7 +1499,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -1511,7 +1514,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
@@ -1521,7 +1524,7 @@ struct HadronPhotonCorrelation {
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
     auto photonPcmsTuple = std::make_tuple(photonPcms);
-    SameKindPair<CorrCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, nNeighboursMixingPhotonPcmPair, -1, collisions, photonPcmsTuple, &cache};
+    SameKindPair<CorrCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, config.nNeighboursMixingPhotonPcmPair.value, -1, collisions, photonPcmsTuple, &cache};
 
     // mixed events
     for (auto pair = pairs.begin(); pair != pairs.end(); pair++) {
@@ -1536,7 +1539,7 @@ struct HadronPhotonCorrelation {
         ROOT::Math::PtEtaPhiMVector const p4photonPcm2(photonPcm2.pt(), photonPcm2.eta(), photonPcm2.phi(), 0.);
         ROOT::Math::PtEtaPhiMVector const p4photonPcmPair = p4photonPcm1 + p4photonPcm2;
 
-        if (std::abs(p4photonPcmPair.eta()) > absEtaMax) {
+        if (std::abs(p4photonPcmPair.eta()) > config.absEtaMax.value) {
           continue;
         }
         // reco assoc selection
@@ -1703,7 +1706,7 @@ struct HadronPhotonCorrelation {
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([](){})>
   void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = T_DecaySelfTrigFunc{}) {
     // main eta cut
-    if (std::abs(assocParticle.eta()) > absEtaMax) {
+    if (std::abs(assocParticle.eta()) > config.absEtaMax.value) {
       return;
     }
 
@@ -1799,7 +1802,7 @@ struct HadronPhotonCorrelation {
         }
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::Pi0Pcm>(histFillInfo);
         // daughters in acceptance
-        if (!checkDaughtersInAcceptance(assocParticle, {-absEtaMax, absEtaMax})) {
+        if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
           return;
         }
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::Pi0Pcm>(histFillInfo);
@@ -1836,7 +1839,7 @@ struct HadronPhotonCorrelation {
         }
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::EtaPcm>(histFillInfo);
         // daughters in acceptance
-        if (!checkDaughtersInAcceptance(assocParticle, {-absEtaMax, absEtaMax})) {
+        if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
           return;
         }
         fillHistMain<HistPathsMcTrue, HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::EtaPcm>(histFillInfo);
@@ -1902,7 +1905,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(mcCollision, trueTriggersThisEvent, mcParticlesThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !mcCollision.trigEv()) {
+      if (config.doTrigEvMixing.value && !mcCollision.trigEv()) {
         continue;
       }
 
@@ -1912,7 +1915,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::True>(histFillInfo, assocParticle);
       };
-      corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
+      corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrue, "process mc-true (all collisions) for multiple associated particles", false);
@@ -1966,7 +1969,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(mcCollision, trueTriggersThisEvent, mcParticlesThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -1976,7 +1979,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueAssocEv>(histFillInfo, assocParticle);
       };
-      corrProcessMixing<TriggerMemoryMode::TrueAssocEv>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
+      corrProcessMixing<TriggerMemoryMode::TrueAssocEv>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueAssocEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
@@ -2042,7 +2045,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(mcCollision, triggersThisEvent, mcParticlesThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -2052,7 +2055,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueAssocEvRecoPtTrig>(histFillInfo, assocParticle, [](){ return false; });
       };
-      corrProcessMixing<TriggerMemoryMode::TrueAssocEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, nMixingAt0McTrue);
+      corrProcessMixing<TriggerMemoryMode::TrueAssocEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueAssocEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
@@ -2142,11 +2145,11 @@ struct HadronPhotonCorrelation {
       auto const triggersThisEvent = triggers.sliceBy(perColTriggers, collision.globalIndex());
       auto const [assocsThisEvent, nMixingAt0] = [&]() {
         if constexpr (AssocTypeV == AssocType::Hadron) {
-          return std::tuple{assocs.sliceBy(perColHadrons, collision.globalIndex()), nMixingAt0Hadron.value};
+          return std::tuple{assocs.sliceBy(perColHadrons, collision.globalIndex()), config.nMixingAt0Hadron.value};
         } else if constexpr (AssocTypeV == AssocType::Pipm) {
-          return std::tuple{assocs.sliceBy(perColPipms, collision.globalIndex()), nMixingAt0Pipm.value};
+          return std::tuple{assocs.sliceBy(perColPipms, collision.globalIndex()), config.nMixingAt0Pipm.value};
         } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-          return std::tuple{assocs.sliceBy(perColPhotonPcms, collision.globalIndex()), nMixingAt0PhotonPcm.value};
+          return std::tuple{assocs.sliceBy(perColPhotonPcms, collision.globalIndex()), config.nMixingAt0PhotonPcm.value};
         } else {
           static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not supported");
         }
@@ -2182,7 +2185,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -2368,7 +2371,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
 
       // select mixing events
-      if (doTrigEvMixing && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !collision.trigEv()) {
         continue;
       }
 
@@ -2383,7 +2386,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, nMixingAt0PhotonPcmPair);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
     }
   }
 
