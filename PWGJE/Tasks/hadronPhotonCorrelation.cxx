@@ -490,7 +490,7 @@ struct HadronPhotonCorrelation {
   // histograms
 
   // main histogram naming (compile time 'string' required for O2 hist registry)
-  static constexpr std::string_view nameHistMainRecoOrMc(TruthLevel truthLevel)
+  static constexpr std::string_view nameHistMainRecoOrMc(TruthLevel const truthLevel)
   {
     return truthLevel == TruthLevel::Reco ? "reco" : "mc";
   }
@@ -648,7 +648,7 @@ struct HadronPhotonCorrelation {
     histos.add("reco/info/h3_nEv_ptTrigZPvMult_reco", "h3_nEv_ptTrigZPvMult_reco", kTHnSparseD, {axisPtTrig, axisZPv, axisMult}, true);
 
     // reco (correlation) analysis
-    histos.add("reco/corr/h3_ptPhiEta_trig", "h3_ptPhiEta_trig", kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
+    histos.add("reco/corr/h3_ptPhiEta_trig_reco", "h3_ptPhiEta_trig_reco", kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
     for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
       addMainAssocHists(TruthLevel::Reco, assocType, true, false);
     }
@@ -1241,7 +1241,13 @@ struct HadronPhotonCorrelation {
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   // generalised correlation functions
-  // per collision
+
+  struct CorrConditionTrue {
+    constexpr bool operator()(auto const&) const
+    {
+      return true;
+    }
+  };
 
   // plain info
   void corrProcessPlain(auto const& collision, auto const& associatedThisEvent,
@@ -1271,13 +1277,7 @@ struct HadronPhotonCorrelation {
   }
 
   // mixing
-  struct ConditionMixAcceptAll {
-    constexpr bool operator()(auto const&) const
-    {
-      return true;
-    }
-  };
-  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = ConditionMixAcceptAll>
+  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = CorrConditionTrue>
   void corrProcessMixing(auto const& collision, auto const& associatedThisEvent,
                          auto const& funcMixing, size_t const nTriggerMixingAt0, T_AssocCondition const& funcConditionAssocOnly = {})
   {
@@ -2322,7 +2322,7 @@ struct HadronPhotonCorrelation {
       // trigger loop
       for (auto const& trigger : triggersThisEvent) {
         // trigger info
-        histos.fill(HIST("reco/corr/h3_ptPhiEta_trig"), trigger.pt(), trigger.phi(), trigger.eta(),
+        histos.fill(HIST("reco/corr/h3_ptPhiEta_trig_reco"), trigger.pt(), trigger.phi(), trigger.eta(),
                     getTriggerPtCorrection(trigger.pt()));
 
         // save trigger for mixing
