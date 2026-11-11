@@ -663,7 +663,7 @@ struct HadronPhotonCorrelation {
     histos.add("reco/corr/h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair", "h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair",
                kTHnSparseD, {axisPtTrig, axisPtAssoc, axisMgg, axisZPvBinning, axisMultBinning}, true);
     // event mixing for photon pairs
-    histos.add("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix", "h4_ptMggZPvMult_photonPcmPair_evMix", kTHnSparseD, {axisPtAssoc, axisMgg, axisZPvBinning, axisMultBinning}, true);
+    histos.add("reco/plain/h4_ptMggZPvMult_reco_photonPcmPair_evMix", "h4_ptMggZPvMult_reco_photonPcmPair_evMix", kTHnSparseD, {axisPtAssoc, axisMgg, axisZPvBinning, axisMultBinning}, true);
     // pseudo mgg
     // pi0Pcm
     histos.add("mc/plain/h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm", "h5_ptTrigPtAssocMggZPvMult_pseudoReco_pi0Pcm",
@@ -1602,7 +1602,7 @@ struct HadronPhotonCorrelation {
           continue;
         }
 
-        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_photonPcmPair_evMix"),
+        histos.fill(HIST("reco/plain/h4_ptMggZPvMult_reco_photonPcmPair_evMix"),
                     p4photonPcmPair.pt(), p4photonPcmPair.M(), collision1.posZ(), collision1.nGlobalTracks());
       }
     }
