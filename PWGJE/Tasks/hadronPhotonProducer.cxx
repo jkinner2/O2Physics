@@ -16,9 +16,9 @@
 /// Table producer for hadron-photon angular correlation analysis
 
 #include "PWGJE/Core/JetDerivedDataUtilities.h"
+#include "PWGJE/DataModel/HadronPhotonCorrelation.h"
 #include "PWGJE/DataModel/Jet.h"
 #include "PWGJE/DataModel/JetReducedData.h"
-#include "PWGJE/DataModel/HadronPhotonCorrelation.h"
 //
 #include "PWGEM/PhotonMeson/DataModel/gammaTables.h"
 
@@ -99,7 +99,8 @@ struct HadronPhotonProducer {
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
 
-  Configurable<double> ptMinHadron{"ptMinHadron", 0.1, "min pt value for hadrons"};
+  Configurable<double> ptMinTrack{"ptMinTrack", 0.1, "min pt value for hadrons"};
+  Configurable<double> ptMinHadron{"ptMinHadron", 0.5, "min pt value for hadrons"};
 
   Configurable<double> piPidLowPt{"piPidLowPt", 0.5, "max pt value for pipm pid without tof"};
   Configurable<double> piPidHighPt{"piPidHighPt", 2.5, "min pt value for pipm pid without tof in relativistic rise of Bethe-Bloch"};
@@ -151,7 +152,8 @@ struct HadronPhotonProducer {
   // functions ================================================================================================================================================================================
 
   // get v0 leg tracks {posTrack, negTrack} as jet tracks via JTrackPI. throws in case of problems
-  auto getV0LegJetTracks(auto const& v0Photon, auto const& tracks) {
+  auto getV0LegJetTracks(auto const& v0Photon, auto const& tracks)
+  {
     auto const posTrack = tracks.rawIteratorAt(v0Photon.posTrack().trackId() - tracks.offset());
     auto const negTrack = tracks.rawIteratorAt(v0Photon.negTrack().trackId() - tracks.offset());
     // check index match
@@ -189,7 +191,7 @@ struct HadronPhotonProducer {
     if (!jetderiveddatautilities::selectTrack(track, trackSelection)) {
       return false;
     }
-    if (!jetderiveddatautilities::applyTrackKinematics(track, ptMinHadron, 1000, -1 * absEtaMax, absEtaMax)) {
+    if (!jetderiveddatautilities::applyTrackKinematics(track, ptMinTrack, 1000, -absEtaMax, absEtaMax)) {
       return false;
     }
     return true;
@@ -255,7 +257,8 @@ struct HadronPhotonProducer {
     auto motherEnd = mothers.end();
     while (mother != motherEnd) {
       // optional exclude pre-hadonisation
-      if (!includePreHadronisation && (*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < 80) {
+      int const statusPreHadronisationCut = 80;
+      if (!includePreHadronisation && (*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < statusPreHadronisationCut) {
         return std::nullopt;
       }
       if ((*mother).pdgCode() == pdgCode || (checkAntiParticle && (*mother).pdgCode() == -pdgCode)) {
@@ -321,7 +324,8 @@ struct HadronPhotonProducer {
   // get highest reco truthLevel particle canidate
 
   template <AssocType AssocTypeV>
-  TruthLevelInfo getMcRecoInfoHadronPipm(auto const& collision, auto const& track) {
+  TruthLevelInfo getMcRecoInfoHadronPipm(auto const& collision, auto const& track)
+  {
     if (!track.has_mcParticle()) {
       return {TruthLevel::Reco, -1};
     }
@@ -343,7 +347,8 @@ struct HadronPhotonProducer {
     double const ptTruePure = mcParticle.pt();
     return {TruthLevel::RecoPure, ptTruePure};
   }
-  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoPhoton(auto const& collision, auto const& v0Photon, auto const& tracks) {
+  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoPhoton(auto const& collision, auto const& v0Photon, auto const& tracks)
+  {
     TruthLevelInfo truthLevelInfo;
     PhotonImpurityInfo impurityInfo;
 
@@ -385,7 +390,8 @@ struct HadronPhotonProducer {
     return {truthLevelInfo, impurityInfo};
   }
   template <AssocType AssocTypeV>
-  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoDiPhoton(auto const& collision, auto const& v0Photon1, auto const& v0Photon2, auto const& tracks) {
+  std::tuple<TruthLevelInfo, PhotonImpurityInfo> getMcRecoInfoDiPhoton(auto const& collision, auto const& v0Photon1, auto const& v0Photon2, auto const& tracks)
+  {
     TruthLevelInfo truthLevelInfo;
     PhotonImpurityInfo impurityInfo;
 
@@ -637,11 +643,13 @@ struct HadronPhotonProducer {
         }();
 
         // hadron info
-        histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
-        tableProduction.hadron(track.collisionId(), intersectTriggerIds,
-                              track.pt(), track.phi(), track.eta(),
-                              static_cast<int>(truthLevelInfoHadron.truthLevel), truthLevelInfoHadron.ptTruePure);
-        tableProduction.hadronTrackId(track.globalIndex());
+        if (track.pt() < ptMinHadron) {
+          histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
+          tableProduction.hadron(track.collisionId(), intersectTriggerIds,
+                                 track.pt(), track.phi(), track.eta(),
+                                 static_cast<int>(truthLevelInfoHadron.truthLevel), truthLevelInfoHadron.ptTruePure);
+          tableProduction.hadronTrackId(track.globalIndex());
+        }
 
         // pipm selection
         auto const& trackPid = track.template track_as<T_TrackPidTable>();
@@ -667,8 +675,8 @@ struct HadronPhotonProducer {
         // pipm info
         histos.fill(HIST("reco/h3_ptPhiEta_pipm"), track.pt(), track.phi(), track.eta());
         tableProduction.pipm(track.collisionId(), intersectTriggerIds,
-                            track.pt(), track.phi(), track.eta(),
-                            static_cast<int>(truthLevelInfoPipm.truthLevel), truthLevelInfoPipm.ptTruePure);
+                             track.pt(), track.phi(), track.eta(),
+                             static_cast<int>(truthLevelInfoPipm.truthLevel), truthLevelInfoPipm.ptTruePure);
         tableProduction.pipmTrackId(track.globalIndex());
       }
     }
@@ -869,7 +877,7 @@ struct HadronPhotonProducer {
         if (!mcParticle.isPhysicalPrimary()) {
           continue;
         }
-        if (std::abs(mcParticle.eta()) > absEtaMax || mcParticle.pt() < ptMinHadron) {
+        if (std::abs(mcParticle.eta()) > absEtaMax || mcParticle.pt() < ptMinTrack) {
           continue;
         }
 
