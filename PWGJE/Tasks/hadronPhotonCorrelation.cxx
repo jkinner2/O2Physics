@@ -699,7 +699,7 @@ struct HadronPhotonCorrelation {
     }
     // assocTypes just on true level
     for (AssocType const& assocType : {AssocType::PhotonDecay, AssocType::PhotonDirect, AssocType::PhotonPi0, AssocType::PhotonEta,
-                                      AssocType::Omega, AssocType::PhotonOmega, AssocType::EtaPrime, AssocType::PhotonEtaPrime, AssocType::PhotonOtherMother}) {
+                                       AssocType::Omega, AssocType::PhotonOmega, AssocType::EtaPrime, AssocType::PhotonEtaPrime, AssocType::PhotonOtherMother}) {
       addMainAssocHists(TruthLevel::True, assocType, false, true);
     }
 

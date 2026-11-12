@@ -99,9 +99,8 @@ struct HadronPhotonProducer {
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
 
-  Configurable<double> ptMinTrack{"ptMinTrack", 0.1, "min pt value for hadrons"};
-  Configurable<double> ptMinHadron{"ptMinHadron", 0.5, "min pt value for hadrons"};
-
+  Configurable<double> ptMinTrack{"ptMinTrack", 0.1, "min pt value for tracks (hadron, pipm, mult, trig,... (not v0 legs or other external))"};
+  Configurable<double> ptMinHadron{"ptMinHadron", 0.2, "min pt value for hadrons"};
   Configurable<double> piPidLowPt{"piPidLowPt", 0.5, "max pt value for pipm pid without tof"};
   Configurable<double> piPidHighPt{"piPidHighPt", 2.5, "min pt value for pipm pid without tof in relativistic rise of Bethe-Bloch"};
   Configurable<std::vector<double>> nSigmaPiTpcLowPt{"nSigmaPiTpcLowPt", {-2, 2}, "minimum-maximum nSigma for pipm in tpc at low pt"};
@@ -643,7 +642,7 @@ struct HadronPhotonProducer {
         }();
 
         // hadron info
-        if (track.pt() < ptMinHadron) {
+        if (track.pt() > ptMinHadron) {
           histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
           tableProduction.hadron(track.collisionId(), intersectTriggerIds,
                                  track.pt(), track.phi(), track.eta(),
