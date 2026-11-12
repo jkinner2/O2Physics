@@ -153,34 +153,33 @@ struct HadronPhotonCorrelation {
   // pcm cuts
   struct : o2::framework::ConfigurableGroup {
     std::string prefix = "pcmcut_group";
-    o2::framework::Configurable<bool> cfg_require_v0_with_itstpc{"cfg_require_v0_with_itstpc", false, "flag to select V0s with ITS-TPC matched tracks"};
-    o2::framework::Configurable<bool> cfg_require_v0_with_itsonly{"cfg_require_v0_with_itsonly", false, "flag to select V0s with ITSonly tracks"};
-    o2::framework::Configurable<bool> cfg_require_v0_with_tpconly{"cfg_require_v0_with_tpconly", false, "flag to select V0s with TPConly tracks"};
-    o2::framework::Configurable<float> cfg_min_pt_v0{"cfg_min_pt_v0", 0.1, "min pT for v0 photons at PV"};
-    o2::framework::Configurable<float> cfg_max_pt_v0{"cfg_max_pt_v0", 1e+10, "max pT for v0 photons at PV"};
-    o2::framework::Configurable<float> cfg_min_eta_v0{"cfg_min_eta_v0", -0.8, "min eta for v0 photons at PV"};
-    o2::framework::Configurable<float> cfg_max_eta_v0{"cfg_max_eta_v0", 0.8, "max eta for v0 photons at PV"};
-    o2::framework::Configurable<float> cfg_min_v0radius{"cfg_min_v0radius", 4.0, "min v0 radius"};
-    o2::framework::Configurable<float> cfg_max_v0radius{"cfg_max_v0radius", 90.0, "max v0 radius"};
-    o2::framework::Configurable<float> cfg_midL_v0radius{"cfg_midL_v0radius", -1.0, "middle low v0 radius for rejection if >0"};
-    o2::framework::Configurable<float> cfg_midH_v0radius{"cfg_midH_v0radius", -1.0, "middle high v0 radius for rejection if >0"};
-    o2::framework::Configurable<float> cfg_max_alpha_ap{"cfg_max_alpha_ap", 0.95, "max alpha for AP cut"};
-    o2::framework::Configurable<float> cfg_max_qt_ap{"cfg_max_qt_ap", 0.01, "max qT for AP cut"};
-    o2::framework::Configurable<float> cfg_min_cospa{"cfg_min_cospa", 0.999, "min V0 CosPA"};
-    o2::framework::Configurable<float> cfg_max_pca{"cfg_max_pca", 1.5, "max distance btween 2 legs"};
-    o2::framework::Configurable<float> cfg_max_chi2kf{"cfg_max_chi2kf", 1e+10, "max chi2/ndf with KF"};
-    o2::framework::Configurable<bool> cfg_reject_v0_on_itsib{"cfg_reject_v0_on_itsib", true, "flag to reject V0s on ITSib"};
-    o2::framework::Configurable<bool> cfg_apply_cuts_from_prefilter_derived{"cfg_apply_cuts_from_prefilter_derived", false, "flag to apply prefilter to V0"};
+    o2::framework::Configurable<bool> cfgRequireV0WithItstpc{"cfgRequireV0WithItstpc", false, "flag to select V0s with ITS-TPC matched tracks"};
+    o2::framework::Configurable<bool> cfgRequireV0WithItsonly{"cfgRequireV0WithItsonly", false, "flag to select V0s with ITSonly tracks"};
+    o2::framework::Configurable<bool> cfgRequireV0WithTpconly{"cfgRequireV0WithTpconly", false, "flag to select V0s with TPConly tracks"};
+    o2::framework::Configurable<float> cfgMinPtV0{"cfgMinPtV0", 0.1, "min pT for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMaxPtV0{"cfgMaxPtV0", 1e+10, "max pT for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMinEtaV0{"cfgMinEtaV0", -0.8, "min eta for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMaxEtaV0{"cfgMaxEtaV0", 0.8, "max eta for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMinV0radius{"cfgMinV0radius", 4.0, "min v0 radius"};
+    o2::framework::Configurable<float> cfgMaxV0radius{"cfgMaxV0radius", 90.0, "max v0 radius"};
+    o2::framework::Configurable<float> cfgMidLV0radius{"cfgMidLV0radius", -1.0, "middle low v0 radius for rejection if >0"};
+    o2::framework::Configurable<float> cfgMidHV0radius{"cfgMidHV0radius", -1.0, "middle high v0 radius for rejection if >0"};
+    o2::framework::Configurable<float> cfgMaxAlphaAp{"cfgMaxAlphaAp", 0.95, "max alpha for AP cut"};
+    o2::framework::Configurable<float> cfgMaxQtAp{"cfgMaxQtAp", 0.01, "max qT for AP cut"};
+    o2::framework::Configurable<float> cfgMinCospa{"cfgMinCospa", 0.999, "min V0 CosPA"};
+    o2::framework::Configurable<float> cfgMaxPca{"cfgMaxPca", 1.5, "max distance btween 2 legs"};
+    o2::framework::Configurable<float> cfgMaxChi2kf{"cfgMaxChi2kf", 1e+10, "max chi2/ndf with KF"};
+    o2::framework::Configurable<bool> cfgRejectV0OnItsib{"cfgRejectV0OnItsib", true, "flag to reject V0s on ITSib"};
 
-    o2::framework::Configurable<int> cfg_min_ncluster_tpc{"cfg_min_ncluster_tpc", 0, "min ncluster tpc"};
-    o2::framework::Configurable<int> cfg_min_ncrossedrows{"cfg_min_ncrossedrows", 40, "min ncrossed rows"};
-    o2::framework::Configurable<float> cfg_max_frac_shared_clusters_tpc{"cfg_max_frac_shared_clusters_tpc", 999.f, "max fraction of shared clusters in TPC"};
-    o2::framework::Configurable<float> cfg_max_chi2tpc{"cfg_max_chi2tpc", 4.0, "max chi2/NclsTPC"};
-    o2::framework::Configurable<float> cfg_max_chi2its{"cfg_max_chi2its", 36.0, "max chi2/NclsITS"};
-    o2::framework::Configurable<float> cfg_min_TPCNsigmaEl{"cfg_min_TPCNsigmaEl", -3.0, "min. TPC n sigma for electron"};
-    o2::framework::Configurable<float> cfg_max_TPCNsigmaEl{"cfg_max_TPCNsigmaEl", +3.0, "max. TPC n sigma for electron"};
-    o2::framework::Configurable<bool> cfg_disable_itsonly_track{"cfg_disable_itsonly_track", false, "flag to disable ITSonly tracks"};
-    o2::framework::Configurable<bool> cfg_disable_tpconly_track{"cfg_disable_tpconly_track", false, "flag to disable TPConly tracks"};
+    o2::framework::Configurable<int> cfgMinNclusterTpc{"cfgMinNclusterTpc", 0, "min ncluster tpc"};
+    o2::framework::Configurable<int> cfgMinNcrossedrows{"cfgMinNcrossedrows", 40, "min ncrossed rows"};
+    o2::framework::Configurable<float> cfgMaxFracSharedClustersTpc{"cfgMaxFracSharedClustersTpc", 999.f, "max fraction of shared clusters in TPC"};
+    o2::framework::Configurable<float> cfgMaxChi2tpc{"cfgMaxChi2tpc", 4.0, "max chi2/NclsTPC"};
+    o2::framework::Configurable<float> cfgMaxChi2its{"cfgMaxChi2its", 36.0, "max chi2/NclsITS"};
+    o2::framework::Configurable<float> cfgMinTPCNsigmaEl{"cfgMinTPCNsigmaEl", -3.0, "min. TPC n sigma for electron"};
+    o2::framework::Configurable<float> cfgMaxTPCNsigmaEl{"cfgMaxTPCNsigmaEl", +3.0, "max. TPC n sigma for electron"};
+    o2::framework::Configurable<bool> cfgDisableItsonlyTrack{"cfgDisableItsonlyTrack", false, "flag to disable ITSonly tracks"};
+    o2::framework::Configurable<bool> cfgDisableTpconlyTrack{"cfgDisableTpconlyTrack", false, "flag to disable TPConly tracks"};
   } configPcmCuts;
 
   // histogram config
@@ -196,7 +195,7 @@ struct HadronPhotonCorrelation {
     Configurable<std::vector<double>> binsPtTrig{"binsPtTrig", {5, 10, 25, 100}, "correlation ptTrig bins"};
     Configurable<std::vector<double>> binsPtAssoc{"binsPtAssoc",
                                                   {0.2, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10,
-                                                  12.5, 15, 17.5, 20, 25, 35, 50, 100},
+                                                   12.5, 15, 17.5, 20, 25, 35, 50, 100},
                                                   "correlation ptAssoc bins"};
     Configurable<std::vector<double>> binsDPhi{"binsDPhi",
                                                {(0.00 - 1. / 4) * constants::math::TwoPI,
@@ -497,100 +496,101 @@ struct HadronPhotonCorrelation {
   static constexpr std::string_view nameHistMainMode(HistFillMode const histFillMode)
   {
     switch (histFillMode) {
-    case HistFillMode::PlainPt:
-      return "plain/h2_ptTrigPtAssoc_";
-    case HistFillMode::PlainPhiEta:
-      return "plain/h4_ptTrigPtAssocPhiEta_";
-    case HistFillMode::PlainZPvMult:
-      return "plain/h4_ptTrigPtAssocZPvMult_";
-    case HistFillMode::Correlation:
-      return "corr/h6_corr_";
-    case HistFillMode::Mixing:
-      return "corr/h6_mix_";
-    default:
-      throw std::runtime_error("histFillMode not found for hist name");
+      case HistFillMode::PlainPt:
+        return "plain/h2_ptTrigPtAssoc_";
+      case HistFillMode::PlainPhiEta:
+        return "plain/h4_ptTrigPtAssocPhiEta_";
+      case HistFillMode::PlainZPvMult:
+        return "plain/h4_ptTrigPtAssocZPvMult_";
+      case HistFillMode::Correlation:
+        return "corr/h6_corr_";
+      case HistFillMode::Mixing:
+        return "corr/h6_mix_";
+      default:
+        throw std::runtime_error("histFillMode not found for hist name");
     }
   }
   static constexpr std::string_view nameHistMainTruth(TruthLevel const truthLevel)
   {
     switch (truthLevel) {
-    case TruthLevel::Reco:
-      return "reco";
-    case TruthLevel::RecoAssocEv:
-      return "recoAssocEv";
-    case TruthLevel::RecoPure:
-      return "recoPure";
-    case TruthLevel::RecoPureTruePtAssoc:
-      return "recoPureTruePtAssoc";
-    case TruthLevel::PseudoReco:
-      return "pseudoReco";
-    case TruthLevel::PseudoRecoAssocEv:
-      return "pseudoRecoAssocEv";
-    case TruthLevel::PseudoRecoPure:
-      return "pseudoRecoPure";
-    case TruthLevel::PseudoRecoPureTruePtAssoc:
-      return "pseudoRecoPureTruePtAssoc";
-    case TruthLevel::TrueGeoAcc:
-      return "trueGeoAcc";
-    case TruthLevel::TrueMeasDecay:
-      return "trueMeasDecay";
-    case TruthLevel::TrueAssocEvRecoPtTrig:
-      return "trueAssocEvRecoPtTrig";
-    case TruthLevel::TrueAssocEv:
-      return "trueAssocEv";
-    case TruthLevel::True:
-      return "true";
-    case TruthLevel::TrueDecaySelfTrig:
-      return "trueDecaySelfTrig";
-    default:
-      throw std::runtime_error("truthLevel not found for hist name");
+      case TruthLevel::Reco:
+        return "reco";
+      case TruthLevel::RecoAssocEv:
+        return "recoAssocEv";
+      case TruthLevel::RecoPure:
+        return "recoPure";
+      case TruthLevel::RecoPureTruePtAssoc:
+        return "recoPureTruePtAssoc";
+      case TruthLevel::PseudoReco:
+        return "pseudoReco";
+      case TruthLevel::PseudoRecoAssocEv:
+        return "pseudoRecoAssocEv";
+      case TruthLevel::PseudoRecoPure:
+        return "pseudoRecoPure";
+      case TruthLevel::PseudoRecoPureTruePtAssoc:
+        return "pseudoRecoPureTruePtAssoc";
+      case TruthLevel::TrueGeoAcc:
+        return "trueGeoAcc";
+      case TruthLevel::TrueMeasDecay:
+        return "trueMeasDecay";
+      case TruthLevel::TrueAssocEvRecoPtTrig:
+        return "trueAssocEvRecoPtTrig";
+      case TruthLevel::TrueAssocEv:
+        return "trueAssocEv";
+      case TruthLevel::True:
+        return "true";
+      case TruthLevel::TrueDecaySelfTrig:
+        return "trueDecaySelfTrig";
+      default:
+        throw std::runtime_error("truthLevel not found for hist name");
     }
   }
   static constexpr std::string_view nameHistMainAssoc(AssocType const assocType, TruthLevel const truthLevel)
   {
     switch (assocType) {
-    case AssocType::Hadron:
-      return "hadron";
-    case AssocType::Pipm:
-      return "pipm";
-    case AssocType::PhotonPcm:
-      return isTrueLevel(truthLevel) ? "photon" : "photonPcm";
-    case AssocType::PhotonDecay:
-      return "photonDecay";
-    case AssocType::PhotonDirect:
-      return "photonDirect";
-    case AssocType::Pi0Pcm:
-      return isTrueLevel(truthLevel) ? "pi0" : "pi0Pcm";
-    case AssocType::Pi0PcmPeak:
-      return "pi0PcmPeak";
-    case AssocType::Pi0PcmSide:
-      return "pi0PcmSide";
-    case AssocType::PhotonPi0:
-      return "photonPi0";
-    case AssocType::EtaPcm:
-      return isTrueLevel(truthLevel) ? "eta" : "etaPcm";
-    case AssocType::EtaPcmPeak:
-      return "etaPcmPeak";
-    case AssocType::EtaPcmSide:
-      return "etaPcmSide";
-    case AssocType::PhotonEta:
-      return "photonEta";
-    case AssocType::Omega:
-      return "omega";
-    case AssocType::PhotonOmega:
-      return "photonOmega";
-    case AssocType::EtaPrime:
-      return "etaPrime";
-    case AssocType::PhotonEtaPrime:
-      return "photonEtaPrime";
-    case AssocType::PhotonOtherMother:
-      return "photonOtherMother";
-    default:
-      throw std::runtime_error("assocType not found for hist name");
+      case AssocType::Hadron:
+        return "hadron";
+      case AssocType::Pipm:
+        return "pipm";
+      case AssocType::PhotonPcm:
+        return isTrueLevel(truthLevel) ? "photon" : "photonPcm";
+      case AssocType::PhotonDecay:
+        return "photonDecay";
+      case AssocType::PhotonDirect:
+        return "photonDirect";
+      case AssocType::Pi0Pcm:
+        return isTrueLevel(truthLevel) ? "pi0" : "pi0Pcm";
+      case AssocType::Pi0PcmPeak:
+        return "pi0PcmPeak";
+      case AssocType::Pi0PcmSide:
+        return "pi0PcmSide";
+      case AssocType::PhotonPi0:
+        return "photonPi0";
+      case AssocType::EtaPcm:
+        return isTrueLevel(truthLevel) ? "eta" : "etaPcm";
+      case AssocType::EtaPcmPeak:
+        return "etaPcmPeak";
+      case AssocType::EtaPcmSide:
+        return "etaPcmSide";
+      case AssocType::PhotonEta:
+        return "photonEta";
+      case AssocType::Omega:
+        return "omega";
+      case AssocType::PhotonOmega:
+        return "photonOmega";
+      case AssocType::EtaPrime:
+        return "etaPrime";
+      case AssocType::PhotonEtaPrime:
+        return "photonEtaPrime";
+      case AssocType::PhotonOtherMother:
+        return "photonOtherMother";
+      default:
+        throw std::runtime_error("assocType not found for hist name");
     }
   }
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
-  static constexpr auto histPath() {
+  static constexpr auto histPath()
+  {
     return HIST(nameHistMainRecoOrMc(TruthLevelV)) + HIST("/") +
            HIST(nameHistMainMode(HistFillModeV)) + HIST(nameHistMainTruth(TruthLevelV)) + HIST("_") + HIST(nameHistMainAssoc(AssocTypeV, TruthLevelV));
   }
@@ -649,10 +649,10 @@ struct HadronPhotonCorrelation {
 
     // reco (correlation) analysis
     histos.add("reco/corr/h3_ptPhiEta_trig_reco", "h3_ptPhiEta_trig_reco", kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
-    for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+    for (AssocType const& assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
       addMainAssocHists(TruthLevel::Reco, assocType, true, false);
     }
-    for (AssocType const assocType : {AssocType::Pi0PcmPeak, AssocType::Pi0PcmSide, AssocType::EtaPcmPeak, AssocType::EtaPcmSide}) {
+    for (AssocType const& assocType : {AssocType::Pi0PcmPeak, AssocType::Pi0PcmSide, AssocType::EtaPcmPeak, AssocType::EtaPcmSide}) {
       addMainAssocHists(TruthLevel::Reco, assocType, false, false);
     }
 
@@ -681,38 +681,38 @@ struct HadronPhotonCorrelation {
     histos.add("mc/info/h3_nEv_ptTrigZPvMult_trueAssocEvRecoPtTrig", "h3_nEv_ptTrigZPvMult_trueAssocEvRecoPtTrig", kTHnSparseD, {axisPtTrig, axisZPv, axisMult}, true);
 
     // true++ (event selection)
-    for (TruthLevel const truthLevel : {TruthLevel::True, TruthLevel::TrueAssocEv, TruthLevel::TrueAssocEvRecoPtTrig}) {
+    for (TruthLevel const& truthLevel : {TruthLevel::True, TruthLevel::TrueAssocEv, TruthLevel::TrueAssocEvRecoPtTrig}) {
       histos.add(std::format("mc/corr/h3_ptPhiEta_trig_{}", nameHistMainTruth(truthLevel)).data(), std::format("h3_ptPhiEta_trig_{}", nameHistMainTruth(truthLevel)).data(),
                  kTHnSparseD, {axisPtAssoc, axisPhi, axisEta}, true);
-      for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+      for (AssocType const& assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
         addMainAssocHists(truthLevel, assocType, true, true);
       }
-      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+      for (AssocType const& assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
         addMainAssocHists(truthLevel, assocType, false, true);
       }
     }
     // extra truthLevels for photonPcmPair
-    for (TruthLevel const truthLevel : {TruthLevel::TrueDecaySelfTrig, TruthLevel::TrueMeasDecay, TruthLevel::TrueGeoAcc}) {
-      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+    for (TruthLevel const& truthLevel : {TruthLevel::TrueDecaySelfTrig, TruthLevel::TrueMeasDecay, TruthLevel::TrueGeoAcc}) {
+      for (AssocType const& assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
         addMainAssocHists(truthLevel, assocType, false, true);
       }
     }
     // assocTypes just on true level
-    for (AssocType const assocType : {AssocType::PhotonDecay, AssocType::PhotonDirect, AssocType::PhotonPi0, AssocType::PhotonEta,
+    for (AssocType const& assocType : {AssocType::PhotonDecay, AssocType::PhotonDirect, AssocType::PhotonPi0, AssocType::PhotonEta,
                                       AssocType::Omega, AssocType::PhotonOmega, AssocType::EtaPrime, AssocType::PhotonEtaPrime, AssocType::PhotonOtherMother}) {
       addMainAssocHists(TruthLevel::True, assocType, false, true);
     }
 
     // reco++ (MC info)
     // std assoc
-    for (TruthLevel const truthLevel : {TruthLevel::RecoAssocEv, TruthLevel::RecoPure, TruthLevel::RecoPureTruePtAssoc}) {
-      for (AssocType const assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
+    for (TruthLevel const& truthLevel : {TruthLevel::RecoAssocEv, TruthLevel::RecoPure, TruthLevel::RecoPureTruePtAssoc}) {
+      for (AssocType const& assocType : {AssocType::Hadron, AssocType::Pipm, AssocType::PhotonPcm}) {
         addMainAssocHists(truthLevel, assocType, true, false);
       }
     }
     // photonPcmPair assoc
-    for (TruthLevel const truthLevel : {TruthLevel::PseudoReco, TruthLevel::PseudoRecoAssocEv, TruthLevel::PseudoRecoPure, TruthLevel::PseudoRecoPureTruePtAssoc}) {
-      for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+    for (TruthLevel const& truthLevel : {TruthLevel::PseudoReco, TruthLevel::PseudoRecoAssocEv, TruthLevel::PseudoRecoPure, TruthLevel::PseudoRecoPureTruePtAssoc}) {
+      for (AssocType const& assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
         addMainAssocHists(truthLevel, assocType, false, false);
       }
     }
@@ -739,30 +739,30 @@ struct HadronPhotonCorrelation {
     fV0PhotonCut = V0PhotonCut("fV0PhotonCut", "fV0PhotonCut");
 
     // for v0
-    fV0PhotonCut.SetV0PtRange(configPcmCuts.cfg_min_pt_v0, configPcmCuts.cfg_max_pt_v0);
-    fV0PhotonCut.SetV0EtaRange(configPcmCuts.cfg_min_eta_v0, configPcmCuts.cfg_max_eta_v0);
-    fV0PhotonCut.SetMinCosPA(configPcmCuts.cfg_min_cospa);
-    fV0PhotonCut.SetMaxPCA(configPcmCuts.cfg_max_pca);
-    fV0PhotonCut.SetMaxChi2KF(configPcmCuts.cfg_max_chi2kf);
-    fV0PhotonCut.SetRxyRange(configPcmCuts.cfg_min_v0radius, configPcmCuts.cfg_max_v0radius, configPcmCuts.cfg_midL_v0radius, configPcmCuts.cfg_midH_v0radius);
-    fV0PhotonCut.SetAPRange(configPcmCuts.cfg_max_alpha_ap, configPcmCuts.cfg_max_qt_ap);
-    fV0PhotonCut.RejectITSib(configPcmCuts.cfg_reject_v0_on_itsib);
+    fV0PhotonCut.SetV0PtRange(configPcmCuts.cfgMinPtV0, configPcmCuts.cfgMaxPtV0);
+    fV0PhotonCut.SetV0EtaRange(configPcmCuts.cfgMinEtaV0, configPcmCuts.cfgMaxEtaV0);
+    fV0PhotonCut.SetMinCosPA(configPcmCuts.cfgMinCospa);
+    fV0PhotonCut.SetMaxPCA(configPcmCuts.cfgMaxPca);
+    fV0PhotonCut.SetMaxChi2KF(configPcmCuts.cfgMaxChi2kf);
+    fV0PhotonCut.SetRxyRange(configPcmCuts.cfgMinV0radius, configPcmCuts.cfgMaxV0radius, configPcmCuts.cfgMidLV0radius, configPcmCuts.cfgMidHV0radius);
+    fV0PhotonCut.SetAPRange(configPcmCuts.cfgMaxAlphaAp, configPcmCuts.cfgMaxQtAp);
+    fV0PhotonCut.RejectITSib(configPcmCuts.cfgRejectV0OnItsib);
 
-    // for track
-    fV0PhotonCut.SetMinNClustersTPC(configPcmCuts.cfg_min_ncluster_tpc);
-    fV0PhotonCut.SetMinNCrossedRowsTPC(configPcmCuts.cfg_min_ncrossedrows);
+    // for leg
+    fV0PhotonCut.SetMinNClustersTPC(configPcmCuts.cfgMinNclusterTpc);
+    fV0PhotonCut.SetMinNCrossedRowsTPC(configPcmCuts.cfgMinNcrossedrows);
     fV0PhotonCut.SetMinNCrossedRowsOverFindableClustersTPC(0.8);
-    fV0PhotonCut.SetMaxFracSharedClustersTPC(configPcmCuts.cfg_max_frac_shared_clusters_tpc);
-    fV0PhotonCut.SetChi2PerClusterTPC(0.0, configPcmCuts.cfg_max_chi2tpc);
-    fV0PhotonCut.SetTPCNsigmaElRange(configPcmCuts.cfg_min_TPCNsigmaEl, configPcmCuts.cfg_max_TPCNsigmaEl);
-    fV0PhotonCut.SetChi2PerClusterITS(-1e+10, configPcmCuts.cfg_max_chi2its);
+    fV0PhotonCut.SetMaxFracSharedClustersTPC(configPcmCuts.cfgMaxFracSharedClustersTpc);
+    fV0PhotonCut.SetChi2PerClusterTPC(0.0, configPcmCuts.cfgMaxChi2tpc);
+    fV0PhotonCut.SetTPCNsigmaElRange(configPcmCuts.cfgMinTPCNsigmaEl, configPcmCuts.cfgMaxTPCNsigmaEl);
+    fV0PhotonCut.SetChi2PerClusterITS(-1e+10, configPcmCuts.cfgMaxChi2its);
     fV0PhotonCut.SetNClustersITS(0, 7);
     fV0PhotonCut.SetMeanClusterSizeITSob(0.0, 16.0);
-    fV0PhotonCut.SetDisableITSonly(configPcmCuts.cfg_disable_itsonly_track);
-    fV0PhotonCut.SetDisableTPConly(configPcmCuts.cfg_disable_tpconly_track);
-    fV0PhotonCut.SetRequireITSTPC(configPcmCuts.cfg_require_v0_with_itstpc);
-    fV0PhotonCut.SetRequireITSonly(configPcmCuts.cfg_require_v0_with_itsonly);
-    fV0PhotonCut.SetRequireTPConly(configPcmCuts.cfg_require_v0_with_tpconly);
+    fV0PhotonCut.SetDisableITSonly(configPcmCuts.cfgDisableItsonlyTrack);
+    fV0PhotonCut.SetDisableTPConly(configPcmCuts.cfgDisableTpconlyTrack);
+    fV0PhotonCut.SetRequireITSTPC(configPcmCuts.cfgRequireV0WithItstpc);
+    fV0PhotonCut.SetRequireITSonly(configPcmCuts.cfgRequireV0WithItsonly);
+    fV0PhotonCut.SetRequireTPConly(configPcmCuts.cfgRequireV0WithTpconly);
   }
 
   // selections ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -834,7 +834,8 @@ struct HadronPhotonCorrelation {
     auto motherEnd = mothers.end();
     while (mother != motherEnd) {
       // exclude pre-hadonisation
-      if ((*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < 80) {
+      int const statusPreHadronisationCut = 80;
+      if ((*mother).producedByGenerator() && std::abs((*mother).getGenStatusCode()) < statusPreHadronisationCut) {
         return false;
       }
       // check valid associated particle
@@ -856,7 +857,7 @@ struct HadronPhotonCorrelation {
   {
     std::map<AssocType, bool> decaySelfTrigPlainMap;
 
-    for (AssocType const assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
+    for (AssocType const& assocType : {AssocType::Pi0Pcm, AssocType::EtaPcm}) {
       decaySelfTrigPlainMap[assocType] = [&]() {
         auto trigger = triggersThisEvent.begin();
         auto triggerEnd = triggersThisEvent.end();
@@ -941,7 +942,8 @@ struct HadronPhotonCorrelation {
   // assocType dependent checks ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   // check trivial self correlation for reconstruction
-  bool isRecoSelfTrigger(auto const& trigger, auto const& associated) {
+  bool isRecoSelfTrigger(auto const& trigger, auto const& associated)
+  {
     for (auto const& intersectTriggerId : associated.intersectTriggerIds()) {
       if (intersectTriggerId == trigger.globalIndex()) {
         return true;
@@ -951,33 +953,34 @@ struct HadronPhotonCorrelation {
   };
 
   // check reco-mc match
-  bool isMcMatchedCollision(auto const& collision) {
+  bool isMcMatchedCollision(auto const& collision)
+  {
     return collision.has_jetMcCollision();
   };
-  bool isMcMatchedTrigger(auto const& trigger) {
+  bool isMcMatchedTrigger(auto const& trigger)
+  {
     return trigger.template jetTrack_as<aod::JetTracksMCD>().has_mcParticle();
   };
 
   // check reco truthLevel reached
   template <TruthLevel TruthLevelV, AssocType AssocTypeV>
-  bool checkTruthLevelReco(auto const& associated) {
+  bool checkTruthLevelReco(auto const& associated)
+  {
     // std
-    static constexpr std::array truthLevelsRecoStdRanked{
+    static constexpr std::array TruthLevelsRecoStdRanked{
       TruthLevel::Reco,
       TruthLevel::RecoMcMatched,
       TruthLevel::RecoAssocEv,
-      TruthLevel::RecoPure
-    };
+      TruthLevel::RecoPure};
     // diPhoton
-    static constexpr std::array truthLevelsRecoDiPhotonRanked{
+    static constexpr std::array TruthLevelsRecoDiPhotonRanked{
       TruthLevel::Reco,
       TruthLevel::RecoMcMatched,
       TruthLevel::PseudoReco,
       TruthLevel::PseudoRecoAssocEv,
-      TruthLevel::PseudoRecoPure
-    };
+      TruthLevel::PseudoRecoPure};
     // position of truthLevel in chain, -1 if not in ranked truthLevels
-    auto constexpr getRank = [](TruthLevel const truthLevel, auto const& truthLevelsRanked) constexpr -> int {
+    auto constexpr GetRank = [](TruthLevel const truthLevel, auto const& truthLevelsRanked) constexpr -> int {
       for (size_t iRank = 0; iRank < truthLevelsRanked.size(); iRank++) {
         if (truthLevelsRanked[iRank] == truthLevel) {
           return static_cast<int>(iRank);
@@ -986,9 +989,9 @@ struct HadronPhotonCorrelation {
       return -1;
     };
     // TruthLevelV compared to the stored maximum level
-    auto const isReached = [&getRank](TruthLevel const truthLevelRecoMax, auto const& truthLevelsRanked) {
-      int const rankRecoToCheck = getRank(TruthLevelV, truthLevelsRanked);
-      int const rankRecoMax = getRank(truthLevelRecoMax, truthLevelsRanked);
+    auto const isReached = [&GetRank](TruthLevel const truthLevelRecoMax, auto const& truthLevelsRanked) {
+      int const rankRecoToCheck = GetRank(TruthLevelV, truthLevelsRanked);
+      int const rankRecoMax = GetRank(truthLevelRecoMax, truthLevelsRanked);
       if (rankRecoMax < 0) {
         throw std::runtime_error("rankRecoMax not found");
       }
@@ -996,25 +999,25 @@ struct HadronPhotonCorrelation {
     };
     // assocType cases
     if constexpr (AssocTypeV == AssocType::Hadron) {
-      static_assert(getRank(TruthLevelV, truthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
+      static_assert(GetRank(TruthLevelV, TruthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
       TruthLevel const truthLevelRecoMax = static_cast<TruthLevel>(associated.truthLevelRecoHadron());
-      return isReached(truthLevelRecoMax, truthLevelsRecoStdRanked);
+      return isReached(truthLevelRecoMax, TruthLevelsRecoStdRanked);
     } else if constexpr (AssocTypeV == AssocType::Pipm) {
-      static_assert(getRank(TruthLevelV, truthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
+      static_assert(GetRank(TruthLevelV, TruthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
       TruthLevel const truthLevelRecoMax = static_cast<TruthLevel>(associated.truthLevelRecoPipm());
-      return isReached(truthLevelRecoMax, truthLevelsRecoStdRanked);
+      return isReached(truthLevelRecoMax, TruthLevelsRecoStdRanked);
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      static_assert(getRank(TruthLevelV, truthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
+      static_assert(GetRank(TruthLevelV, TruthLevelsRecoStdRanked) >= 0, "truthLevel not in std reco chain");
       TruthLevel const truthLevelRecoMax = static_cast<TruthLevel>(associated.truthLevelRecoPhotonPcm());
-      return isReached(truthLevelRecoMax, truthLevelsRecoStdRanked);
+      return isReached(truthLevelRecoMax, TruthLevelsRecoStdRanked);
     } else if constexpr (AssocTypeV == AssocType::Pi0Pcm) {
-      static_assert(getRank(TruthLevelV, truthLevelsRecoDiPhotonRanked) >= 0, "truthLevel not in diPhoton reco chain");
+      static_assert(GetRank(TruthLevelV, TruthLevelsRecoDiPhotonRanked) >= 0, "truthLevel not in diPhoton reco chain");
       TruthLevel const truthLevelRecoMax = static_cast<TruthLevel>(associated.truthLevelRecoPi0Pcm());
-      return isReached(truthLevelRecoMax, truthLevelsRecoDiPhotonRanked);
+      return isReached(truthLevelRecoMax, TruthLevelsRecoDiPhotonRanked);
     } else if constexpr (AssocTypeV == AssocType::EtaPcm) {
-      static_assert(getRank(TruthLevelV, truthLevelsRecoDiPhotonRanked) >= 0, "truthLevel not in diPhoton reco chain");
+      static_assert(GetRank(TruthLevelV, TruthLevelsRecoDiPhotonRanked) >= 0, "truthLevel not in diPhoton reco chain");
       TruthLevel const truthLevelRecoMax = static_cast<TruthLevel>(associated.truthLevelRecoEtaPcm());
-      return isReached(truthLevelRecoMax, truthLevelsRecoDiPhotonRanked);
+      return isReached(truthLevelRecoMax, TruthLevelsRecoDiPhotonRanked);
     } else {
       static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
     }
@@ -1059,7 +1062,8 @@ struct HadronPhotonCorrelation {
   }
 
   template <AssocType AssocTypeV>
-  bool isSelectedAssoc(auto const& associated) {
+  bool isSelectedAssoc(auto const& associated)
+  {
     if constexpr (AssocTypeV == AssocType::Hadron) {
       return true;
     } else if constexpr (AssocTypeV == AssocType::Pipm) {
@@ -1078,7 +1082,8 @@ struct HadronPhotonCorrelation {
 
   // fill main histogram
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
-  void fillHistMain(auto const& histFillInfo) {
+  void fillHistMain(auto const& histFillInfo)
+  {
     if constexpr (HistFillModeV == HistFillMode::Plain) {
       if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm || AssocTypeV == AssocType::PhotonPcm) {
         histos.fill(histPath<HistFillMode::PlainPhiEta, TruthLevelV, AssocTypeV>(),
@@ -1103,35 +1108,41 @@ struct HadronPhotonCorrelation {
 
   // tcm component: exponential for low pt
   // parameter shape: [m0_h, A_e, T_e]
-  double tcmInvariantSoftExp(double const* pt, double const* par) {
-    double const ET_kin = std::sqrt(std::pow(pt[0], 2) + std::pow(par[0], 2)) - par[0];
-    return std::abs(par[1]) * std::exp(-1 * ET_kin / par[2]);
+  double tcmInvariantSoftExp(double const* pt, double const* par)
+  {
+    double const etKin = std::sqrt(std::pow(pt[0], 2) + std::pow(par[0], 2)) - par[0];
+    return std::abs(par[1]) * std::exp(-etKin / par[2]);
   }
   // tcm component: power law for high pt
   // parameter shape: [A_p, T_p, N_p]
-  double tcmInvariantHardPower(double const* pt, double const* par) {
+  double tcmInvariantHardPower(double const* pt, double const* par)
+  {
     return std::abs(par[0]) / std::pow(1 + std::pow(pt[0], 2) / (std::pow(par[1], 2) * par[2]), par[2]);
   }
   // fit function for invariant pT spectrum
   // parameter shape: [m0_h, A_e, T_e, A_p, T_p, N_p]
-  double tcmInvariantFit(double const* pt, double const* par) {
+  double tcmInvariantFit(double const* pt, double const* par)
+  {
     int const nParSoftExp = 3;
     return tcmInvariantSoftExp(pt, par) + tcmInvariantHardPower(pt, par + nParSoftExp);
   }
   // tcm function (non-invariant)
-  double tcmParam(double const pt, std::vector<double> const& par) {
+  double tcmParam(double const pt, std::vector<double> const& par)
+  {
     return pt * tcmInvariantFit(&pt, par.data());
   }
 
   // pt weight
-  double ptWeightTcms(double const pt, std::vector<double> const& parNum, std::vector<double> const& parDenom) {
+  double ptWeightTcms(double const pt, std::vector<double> const& parNum, std::vector<double> const& parDenom)
+  {
     return tcmParam(pt, parNum) / tcmParam(pt, parDenom);
   }
 
   // rescale of pt spectra for mc
 
   template <AssocType AssocTypeV>
-  double getMcAssocPtScalingFromPt(double const ptTrue) {
+  double getMcAssocPtScalingFromPt(double const ptTrue)
+  {
     auto const getWeight = [this](double const pt, std::vector<double> const& ptRange, std::vector<double> const& parNum, std::vector<double> const& parDenom) {
       if (pt < ptRange.at(0)) {
         return ptWeightTcms(ptRange.at(0), parNum, parDenom);
@@ -1152,18 +1163,21 @@ struct HadronPhotonCorrelation {
     }
   }
   template <AssocType AssocTypeV>
-  double getMcAssocPtScaling(auto const& associated) {
+  double getMcAssocPtScaling(auto const& associated)
+  {
     if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      if (!config.applyScalingPhotonPt.value) return 1;
+      if (!config.applyScalingPhotonPt.value)
+        return 1;
       if (checkTruthLevelReco<TruthLevel::RecoPure, AssocTypeV>(associated)) {
         return getMcAssocPtScalingFromPt<AssocTypeV>(associated.ptTruePure());
       } else {
         return 1;
       }
     } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
-      if (!config.applyScalingPi0Pt.value && !config.applyScalingEtaPt.value) return 1;
+      if (!config.applyScalingPi0Pt.value && !config.applyScalingEtaPt.value)
+        return 1;
       if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::Pi0Pcm>(associated)) {
         return getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(associated.ptTruePure());
       } else if (checkTruthLevelReco<TruthLevel::PseudoRecoPure, AssocType::EtaPcm>(associated)) {
@@ -1177,17 +1191,19 @@ struct HadronPhotonCorrelation {
   }
 
   // get histogram y-quantity at x-value
-  double getH1ValueAt(auto const*const h1, double const value)
+  double getH1ValueAt(auto const* const h1, double const value)
   {
     return h1->GetBinContent(h1->FindFixBin(value));
   }
 
   // K0Short mc scaling
-  double getMcK0ShortPtScalingFromPt(double const ptTrue) {
+  double getMcK0ShortPtScalingFromPt(double const ptTrue)
+  {
     return config.applyScalingK0ShortPt.value ? getH1ValueAt(h1PtScalingK0Short, ptTrue) : 1;
   }
   template <AssocType AssocTypeV>
-  double getMcK0ShortPtScaling (auto const& associated) {
+  double getMcK0ShortPtScaling(auto const& associated)
+  {
     if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm) {
       return 1;
     } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
@@ -1216,7 +1232,7 @@ struct HadronPhotonCorrelation {
   // performs 'phi1 - phi2' and pushes it into the interval [-pi/2, 3pi/2]
   double getDeltaPhi(double const phi1, double const phi2)
   {
-    return RecoDecay::constrainAngle(phi1 - phi2, -1 * constants::math::PIHalf);
+    return RecoDecay::constrainAngle(phi1 - phi2, -constants::math::PIHalf);
   }
 
   // check if invariant mass range
@@ -1347,13 +1363,18 @@ struct HadronPhotonCorrelation {
     if (std::abs(config.ptTrigMin.value - configHist.binsPtTrig.value.at(0)) > doublePrecisionDeltaCheck) {
       throw std::runtime_error("ptTrigMin does not match trigger axis");
     }
-    if (config.applyScalingPhotonPt.value && (config.parScalingPhotonPtData.value.size() != 6 || config.parScalingPhotonPtMc.value.size() != 6)) {
+    if (std::abs(config.absEtaMax + configPcmCuts.cfgMinEtaV0) > doublePrecisionDeltaCheck || std::abs(config.absEtaMax - configPcmCuts.cfgMaxEtaV0) > doublePrecisionDeltaCheck) {
+      throw std::runtime_error("absEtaMax does not match v0 cut");
+    }
+
+    int const nParTcm = 6;
+    if (config.applyScalingPhotonPt.value && (config.parScalingPhotonPtData.value.size() != nParTcm || config.parScalingPhotonPtMc.value.size() != nParTcm)) {
       throw std::runtime_error("wrong number of mc scaling params for photon");
     }
-    if (config.applyScalingPi0Pt.value && (config.parScalingPi0PtData.value.size() != 6 || config.parScalingPi0PtMc.value.size() != 6)) {
+    if (config.applyScalingPi0Pt.value && (config.parScalingPi0PtData.value.size() != nParTcm || config.parScalingPi0PtMc.value.size() != nParTcm)) {
       throw std::runtime_error("wrong number of mc scaling params for pi0");
     }
-    if (config.applyScalingEtaPt.value && (config.parScalingEtaPtData.value.size() != 6 || config.parScalingEtaPtMc.value.size() != 6)) {
+    if (config.applyScalingEtaPt.value && (config.parScalingEtaPtData.value.size() != nParTcm || config.parScalingEtaPtMc.value.size() != nParTcm)) {
       throw std::runtime_error("wrong number of mc scaling params for eta");
     }
 
@@ -1364,10 +1385,14 @@ struct HadronPhotonCorrelation {
     initHistograms();
 
     // mixing trigger memory
-    triggerMemoryReco = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinning.value, configHist.binsMultBinning.value, config.nTriggerSavedForMixing.value);
-    triggerMemoryTrue = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
-    triggerMemoryTrueAssocEv = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
-    triggerMemoryTrueAssocEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value, config.nTriggerSavedForMixing.value);
+    triggerMemoryReco = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinning.value, configHist.binsMultBinning.value,
+                                                              config.nTriggerSavedForMixing.value);
+    triggerMemoryTrue = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
+                                                              config.nTriggerSavedForMixing.value);
+    triggerMemoryTrueAssocEv = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
+                                                                     config.nTriggerSavedForMixing.value);
+    triggerMemoryTrueAssocEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
+                                                                               config.nTriggerSavedForMixing.value);
 
     // init EM pcm cut class
     initV0PhotonCut();
@@ -1410,7 +1435,8 @@ struct HadronPhotonCorrelation {
           return;
         }
 
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
+        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(),
+                                                       collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
         fillHistMain<HistFillMode::Plain, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
@@ -1428,7 +1454,8 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
+                              getTriggerPtCorrection(trigger.pt());
         fillHistMain<HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -1445,7 +1472,9 @@ struct HadronPhotonCorrelation {
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight *
+                              getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
+                              getTriggerPtCorrection(mixingTrigger.pt());
         fillHistMain<HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
@@ -1474,7 +1503,8 @@ struct HadronPhotonCorrelation {
   // photonPcmPair reco :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV>
-  void fillAssocsRecoPhotonPcmPair(auto const& histFillInfo, double const mgg) {
+  void fillAssocsRecoPhotonPcmPair(auto const& histFillInfo, double const mgg)
+  {
     // pi0
     if (isInMassRange<AssocType::Pi0PcmPeak>(mgg)) {
       fillHistMain<HistFillModeV, TruthLevel::Reco, AssocType::Pi0PcmPeak>(histFillInfo);
@@ -1537,7 +1567,8 @@ struct HadronPhotonCorrelation {
           return;
         }
 
-        double const weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(trigger.pt());
+        double const weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
+                              getTriggerPtCorrection(trigger.pt());
 
         // mgg distribution
         histos.fill(HIST("reco/corr/h5_ptTrigPtAssocMggZPvMult_reco_photonPcmPair"),
@@ -1563,7 +1594,9 @@ struct HadronPhotonCorrelation {
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight *
+                              getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
+                              getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
@@ -1643,8 +1676,9 @@ struct HadronPhotonCorrelation {
 
   // mc true++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([](){})>
-  void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = {}) {
+  template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([]() {})>
+  void fillAssocsMcTrue(auto histFillInfo, auto const& assocParticle, T_DecaySelfTrigFunc const& isDecaySelfTrig = {})
+  {
     // main eta cut
     if (std::abs(assocParticle.eta()) > config.absEtaMax.value) {
       return;
@@ -1822,7 +1856,8 @@ struct HadronPhotonCorrelation {
         auto const isDecaySelfTrig = [&decaySelfTrigPlainMap](AssocType const assocType) {
           return decaySelfTrigPlainMap.at(assocType);
         };
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
+        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(),
+                                                       mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
         fillAssocsMcTrue<HistFillMode::Plain, TruthLevel::True>(histFillInfo, assocParticle, isDecaySelfTrig);
       };
       corrProcessPlain(mcCollision, mcParticlesThisEvent, funcPlain);
@@ -1886,7 +1921,8 @@ struct HadronPhotonCorrelation {
         auto const isDecaySelfTrig = [&decaySelfTrigPlainMap](AssocType const assocType) {
           return decaySelfTrigPlainMap.at(assocType);
         };
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
+        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(),
+                                                       mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
         fillAssocsMcTrue<HistFillMode::Plain, TruthLevel::TrueAssocEv>(histFillInfo, assocParticle, isDecaySelfTrig);
       };
       corrProcessPlain(mcCollision, mcParticlesThisEvent, funcPlain);
@@ -1909,7 +1945,7 @@ struct HadronPhotonCorrelation {
       corrProcessCorrelation(mcCollision, trueTriggersThisEvent, mcParticlesThisEvent, funcCorrelation);
 
       // select mixing events
-      if (config.doTrigEvMixing.value && !collision.trigEv()) {
+      if (config.doTrigEvMixing.value && !mcCollision.trigEv()) {
         continue;
       }
 
@@ -1952,14 +1988,15 @@ struct HadronPhotonCorrelation {
         auto const isDecaySelfTrig = [&decaySelfTrigPlainMap](AssocType const assocType) {
           return decaySelfTrigPlainMap.at(assocType);
         };
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
+        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(),
+                                                       mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
         fillAssocsMcTrue<HistFillMode::Plain, TruthLevel::TrueAssocEvRecoPtTrig>(histFillInfo, assocParticle, isDecaySelfTrig);
       };
       corrProcessPlain(collision, mcParticlesThisEvent, funcPlain);
 
       auto const funcCorrelation = [this](auto const& mcCollision, auto const& trigger, auto const& assocParticle) {
         if (!isMcMatchedTrigger(trigger)) {
-         return;
+          return;
         }
         auto const& triggerParticle = trigger.template jetTrack_as<aod::JetTracksMCD>().mcParticle();
         // self trigger info for decaying particles
@@ -1993,7 +2030,7 @@ struct HadronPhotonCorrelation {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), assocParticle.phi()), mixingTrigger.eta() - assocParticle.eta(),
                                          mixingTrigger.pt(), assocParticle.pt(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
         histFillInfo.weight = perTriggerWeight;
-        fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueAssocEvRecoPtTrig>(histFillInfo, assocParticle, [](){ return false; });
+        fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueAssocEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
       corrProcessMixing<TriggerMemoryMode::TrueAssocEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value);
     }
@@ -2003,7 +2040,8 @@ struct HadronPhotonCorrelation {
   // standard mc reco++ :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
-  void fillTruthLevelsMcRecoStd(auto histFillInfo, auto const& collision, auto const& associated) {
+  void fillTruthLevelsMcRecoStd(auto histFillInfo, auto const& collision, auto const& associated)
+  {
     // photon impurity
     if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::PhotonPcm) {
       PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPhotonPcm());
@@ -2055,7 +2093,8 @@ struct HadronPhotonCorrelation {
           return;
         }
 
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
+        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(),
+                                                       collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
         fillTruthLevelsMcRecoStd<HistFillMode::Plain, AssocTypeV>(histFillInfo, collision, associated);
       };
@@ -2073,7 +2112,8 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
+                              getTriggerPtCorrection(trigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Correlation, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
@@ -2090,7 +2130,9 @@ struct HadronPhotonCorrelation {
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight *
+                              getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
+                              getTriggerPtCorrection(mixingTrigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
@@ -2119,7 +2161,8 @@ struct HadronPhotonCorrelation {
   // photonPcmPair mc reco++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV>
-  void fillTruthLevelsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated) {
+  void fillTruthLevelsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated)
+  {
     // pi0 impurity
     if constexpr (HistFillModeV == HistFillMode::Plain && AssocTypeV == AssocType::Pi0Pcm) {
       PhotonImpurity const impurity = static_cast<PhotonImpurity>(associated.impurityPi0Pcm());
@@ -2143,7 +2186,8 @@ struct HadronPhotonCorrelation {
   }
 
   template <HistFillMode HistFillModeV>
-  void fillAssocsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated) {
+  void fillAssocsMcRecoPhotonPcmPair(auto histFillInfo, auto const& collision, auto const& associated)
+  {
     // pi0Pcm
     if (checkTruthLevelReco<TruthLevel::PseudoReco, AssocType::Pi0Pcm>(associated)) {
       // pseudo yield
@@ -2188,7 +2232,8 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void fillProcesMcRecoPhotonPcmPair(auto const& collisions, auto const& triggers, auto const& photonPcmPairs) {
+  void fillProcesMcRecoPhotonPcmPair(auto const& collisions, auto const& triggers, auto const& photonPcmPairs)
+  {
     for (auto const& collision : collisions) {
       // event selection
       if (!totalEvSel(collision)) {
@@ -2223,7 +2268,8 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(trigger.pt());
+        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
+                              getTriggerPtCorrection(trigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
@@ -2240,7 +2286,9 @@ struct HadronPhotonCorrelation {
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight * getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) * getTriggerPtCorrection(mixingTrigger.pt());
+        histFillInfo.weight = perTriggerWeight *
+                              getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
+                              getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
       corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
