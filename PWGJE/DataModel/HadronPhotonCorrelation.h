@@ -59,8 +59,8 @@ enum class TruthLevel : int {
   PseudoRecoPureTruePtAssoc = 8,
   TrueGeoAcc = 9,
   TrueMeasDecay = 10,
-  TrueAssocEvRecoPtTrig = 11,
-  TrueAssocEv = 12,
+  TrueRecoEvRecoPtTrig = 11,
+  TrueRecoEv = 12,
   True = 13,
   TrueDecaySelfTrig = 14
 };
@@ -81,8 +81,8 @@ constexpr bool isTrueLevel(TruthLevel const truthLevel)
       return false;
     case TruthLevel::TrueGeoAcc:
     case TruthLevel::TrueMeasDecay:
-    case TruthLevel::TrueAssocEvRecoPtTrig:
-    case TruthLevel::TrueAssocEv:
+    case TruthLevel::TrueRecoEvRecoPtTrig:
+    case TruthLevel::TrueRecoEv:
     case TruthLevel::True:
     case TruthLevel::TrueDecaySelfTrig:
       return true;
