@@ -2460,7 +2460,9 @@ struct PhotonConversionBuilder {
     }
 
     if (nGreedyFallback > 0) {
-      LOGF(warning, "group matching: %d conflict group(s) larger than dedupMaxGroupSize = %d were solved greedily", nGreedyFallback, maxEnum);
+      LOGF(warning, "group matching: %d conflict group(s) larger than dedupMaxGroupSize = %d of nGroups = %li were solved greedily", nGreedyFallback, maxEnum, groups.size());
+    } else {
+      LOGF(warning, "group matching: groups = %li", groups.size());
     }
 
     // the table expects candidates ordered by collision

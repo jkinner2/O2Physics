@@ -75,15 +75,16 @@
 
 using namespace o2;
 using namespace o2::framework;
+using namespace hpc;
 
-using CorrCollisions = aod::CorrCollisions;
-using CorrCollisionsMcD = soa::Join<aod::CorrCollisions, aod::CorrCollisionMcIds>;
-using CorrMcCollisions = soa::Join<aod::JetMcCollisions, aod::McCollisionsExtraCorr>;
+using HpcCollisions = aod::HpcCollisions;
+using HpcCollisionsMcD = soa::Join<aod::HpcCollisions, aod::HpcCollisionMcIds>;
+using CorrMcCollisions = soa::Join<aod::JetMcCollisions, aod::HpcMcCollisionsExtra>;
 
-using PhotonPcmsWithV0 = soa::Join<aod::PhotonPcms, aod::PhotonPcmV0PhotonIds>;
-using PhotonPcmPairsWithV0 = soa::Join<aod::PhotonPcmPairs, aod::PhotonPcmPairV0PhotonIds>;
+using PhotonPcmsWithV0 = soa::Join<aod::HpcPhotonPcms, aod::HpcPhotonPcmV0PhotonIds>;
+using PhotonPcmPairsWithV0 = soa::Join<aod::HpcPhotonPcmPairs, aod::HpcPhotonPcmPairV0PhotonIds>;
 
-using BinningZPvMult = ColumnBinningPolicy<aod::corr_collision::PosZ, aod::corr_collision::NGlobalTracks>;
+using BinningZPvMult = ColumnBinningPolicy<aod::hpc_collision::PosZ, aod::hpc_collision::NGlobalTracks>;
 
 // correlation analysis ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/
@@ -100,9 +101,9 @@ struct HadronPhotonCorrelation {
     Configurable<std::string> urlCcdb{"urlCcdb", "http://alice-ccdb.cern.ch", "url of the ccdb repository"};
     Configurable<int64_t> noLaterThanCcdbConfig{"noLaterThanCcdbConfig", -1, "latest acceptable timestamp of creation for the object (-1 for task start time)"};
 
-    // shared across analysis tasks
+    // central cuts
     Configurable<double> absEtaMax{"absEtaMax", 0.8, "maximum absEta cut"};
-    Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pT of triggers"};
+    Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pt of triggers"};
 
     // analysis settings
     Configurable<int> splitMcEvN{"splitMcEvN", 1, "number of event fractions for selection in MC (max 10) | (select 1 for data)"};
@@ -156,8 +157,8 @@ struct HadronPhotonCorrelation {
     o2::framework::Configurable<bool> cfgRequireV0WithItstpc{"cfgRequireV0WithItstpc", false, "flag to select V0s with ITS-TPC matched tracks"};
     o2::framework::Configurable<bool> cfgRequireV0WithItsonly{"cfgRequireV0WithItsonly", false, "flag to select V0s with ITSonly tracks"};
     o2::framework::Configurable<bool> cfgRequireV0WithTpconly{"cfgRequireV0WithTpconly", false, "flag to select V0s with TPConly tracks"};
-    o2::framework::Configurable<float> cfgMinPtV0{"cfgMinPtV0", 0.1, "min pT for v0 photons at PV"};
-    o2::framework::Configurable<float> cfgMaxPtV0{"cfgMaxPtV0", 1e+10, "max pT for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMinPtV0{"cfgMinPtV0", 0.1, "min pt for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMaxPtV0{"cfgMaxPtV0", 1e+10, "max pt for v0 photons at PV"};
     o2::framework::Configurable<float> cfgMinEtaV0{"cfgMinEtaV0", -1e+10, "min eta for v0 photons at PV"};
     o2::framework::Configurable<float> cfgMaxEtaV0{"cfgMaxEtaV0", 1e+10, "max eta for v0 photons at PV"};
     o2::framework::Configurable<float> cfgMinV0radius{"cfgMinV0radius", 4.0, "min v0 radius"};
@@ -295,13 +296,13 @@ struct HadronPhotonCorrelation {
 
   // prepare for per collision slicing
   Preslice<aod::JetTracks> perColTracks = aod::jtrack::collisionId;
-  Preslice<aod::Triggers> perColTriggers = aod::corr_common::corrCollisionId;
-  Preslice<aod::Hadrons> perColHadrons = aod::corr_common::corrCollisionId;
-  Preslice<aod::Pipms> perColPipms = aod::corr_common::corrCollisionId;
-  Preslice<aod::PhotonPcms> perColPhotonPcms = aod::corr_common::corrCollisionId;
-  Preslice<aod::PhotonPcmPairs> perColPhotonPcmPairs = aod::corr_common::corrCollisionId;
+  Preslice<aod::hpcTriggers> perColTriggers = aod::hpc_common::corrCollisionId;
+  Preslice<aod::HpcHadrons> perColHadrons = aod::hpc_common::corrCollisionId;
+  Preslice<aod::HpcPipms> perColPipms = aod::hpc_common::corrCollisionId;
+  Preslice<aod::HpcPhotonPcms> perColPhotonPcms = aod::hpc_common::corrCollisionId;
+  Preslice<aod::HpcPhotonPcmPairs> perColPhotonPcmPairs = aod::hpc_common::corrCollisionId;
   Preslice<aod::JetParticles> perColMcParticles = aod::jmcparticle::mcCollisionId;
-  Preslice<aod::TrueTriggers> perColTrueTriggers = aod::corr_common::jetMcCollisionId;
+  Preslice<aod::HpcTrueTriggers> perColTrueTriggers = aod::hpc_common::jetMcCollisionId;
 
   // declare analysis variables
 
@@ -601,6 +602,7 @@ struct HadronPhotonCorrelation {
     // define axes
     const AxisSpec axisN{1, 0., 1., "#it{N}_{something}"};
     const AxisSpec axisCategories{32, 0., 32., "categories"};
+    const AxisSpec axisInts{-2049, -1024.5, 1024.5, "ints"};
 
     const AxisSpec axisZPv{configHist.nBinsZPvPlain, -7, 7, "#it{z}_{pv}"};
     const AxisSpec axisMult{configHist.nBinsMultPlain + 1, -0.5, configHist.nBinsMultPlain + 0.5, "multiplicity"};
@@ -722,9 +724,10 @@ struct HadronPhotonCorrelation {
     histos.add("mc/plain/h3_ptTrigPtAssocCategory_pseudoRecoImpurities_pi0Pcm", "h3_ptTrigPtAssocCategory_pseudoRecoImpurities_pi0Pcm",
                kTHnSparseD, {axisPtTrig, axisPtAssoc, axisCategories}, true);
 
-    // check reco-mc matching
+    // check count histograms - should not be filled, unless something is off / changed
     histos.add("mc/info/h1_pt_noMatch_event", "h1_pt_noMatch_event", kTH1D, {axisN}, true);
     histos.add("mc/info/h1_pt_noMatch_trigger", "h1_pt_noMatch_trigger", kTH1D, {axisPtTrig}, true);
+    histos.add("mc/info/h1_unusualStatus_photonDirect", "h1_unusualStatus_photonDirect", kTH1D, {axisInts}, true);
 
     // pcm dcaZ
     histos.add("reco/plain/h5_ptTrigPtAssocDcaZZPvMult_photonPcm", "h5_ptTrigPtAssocDcaZZPvMult_photonPcm",
@@ -1119,7 +1122,7 @@ struct HadronPhotonCorrelation {
   {
     return std::abs(par[0]) / std::pow(1 + std::pow(pt[0], 2) / (std::pow(par[1], 2) * par[2]), par[2]);
   }
-  // fit function for invariant pT spectrum
+  // fit function for invariant pt spectrum
   // parameter shape: [m0_h, A_e, T_e, A_p, T_p, N_p]
   double tcmInvariantFit(double const* pt, double const* par)
   {
@@ -1346,6 +1349,10 @@ struct HadronPhotonCorrelation {
 
   void init(InitContext const&)
   {
+    double const doublePrecisionDeltaCheck = 1e-5;
+    double absEtaMaxProducer;
+    double ptTrigMinProducer;
+
     // analysis info
     int64_t const noLaterThanCcdb =
       config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : config.noLaterThanCcdbConfig.value;
@@ -1356,15 +1363,28 @@ struct HadronPhotonCorrelation {
     // not later than (avoids replacing objects while a train is running)
     ccdb->setCreatedNotAfter(noLaterThanCcdb);
 
-    // init analysis variables
+    // variables from other tasks
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "absEtaMax", absEtaMaxProducer, false)) {
+      if (std::abs(config.absEtaMax.value - absEtaMaxProducer) > doublePrecisionDeltaCheck) {
+        throw std::runtime_error("absEtaMax does not match producer");
+      }
+    };
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "ptTrigMin", ptTrigMinProducer, false)) {
+      if (std::abs(config.ptTrigMin.value - ptTrigMinProducer) > doublePrecisionDeltaCheck) {
+        throw std::runtime_error("ptTrigMin does not match producer");
+      }
+    }
 
     // check coherent config
-    double const doublePrecisionDeltaCheck = 1e-5;
     if (std::abs(config.ptTrigMin.value - configHist.binsPtTrig.value.at(0)) > doublePrecisionDeltaCheck) {
       throw std::runtime_error("ptTrigMin does not match trigger axis");
     }
+    if (std::abs(2 * config.absEtaMax.value + configHist.binsDEta.value.front()) > doublePrecisionDeltaCheck ||
+        std::abs(2 * config.absEtaMax.value - configHist.binsDEta.value.back()) > doublePrecisionDeltaCheck) {
+      throw std::runtime_error("absEtaMax does not match binsDEta axis");
+    }
 
-    if (config.absEtaMax > std::abs(configPcmCuts.cfgMinEtaV0) || config.absEtaMax > std::abs(configPcmCuts.cfgMaxEtaV0)) {
+    if (config.absEtaMax.value > std::abs(configPcmCuts.cfgMinEtaV0) || config.absEtaMax.value > std::abs(configPcmCuts.cfgMaxEtaV0)) {
       throw std::runtime_error("absEtaMax does not constrain v0 cut");
     }
 
@@ -1482,19 +1502,19 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processRecoHadron(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::Hadrons const& hadrons)
+  void processRecoHadron(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
     fillProcessRecoStd<AssocType::Hadron>(collisions, triggers, hadrons);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoHadron, "process standard for associated hardon", false);
 
-  void processRecoPipm(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::Pipms const& pipms)
+  void processRecoPipm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
     fillProcessRecoStd<AssocType::Pipm>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPipm, "process standard for associated pipm", false);
 
-  void processRecoPhotonPcm(CorrCollisions const& collisions, aod::Triggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processRecoPhotonPcm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
                             aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -1526,7 +1546,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processRecoPhotonPcmPair(CorrCollisions const& collisions, aod::Triggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processRecoPhotonPcmPair(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
                                 aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     for (auto const& collision : collisions) {
@@ -1605,12 +1625,12 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
-  void processPhotonPcmPairMix(CorrCollisions const& collisions, PhotonPcmsWithV0 const& photonPcms,
+  void processPhotonPcmPairMix(HpcCollisions const& collisions, PhotonPcmsWithV0 const& photonPcms,
                                aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
     auto photonPcmsTuple = std::make_tuple(photonPcms);
-    SameKindPair<CorrCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, config.nNeighboursMixingPhotonPcmPair.value, -1, collisions, photonPcmsTuple, &cache};
+    SameKindPair<HpcCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, config.nNeighboursMixingPhotonPcmPair.value, -1, collisions, photonPcmsTuple, &cache};
 
     // mixed events
     for (auto pair = pairs.begin(); pair != pairs.end(); pair++) {
@@ -1646,7 +1666,7 @@ struct HadronPhotonCorrelation {
   // other ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processPcmDcaZ(CorrCollisions::iterator const& collision, PhotonPcmsWithV0 const& photonPcms,
+  void processPcmDcaZ(HpcCollisions::iterator const& collision, PhotonPcmsWithV0 const& photonPcms,
                       aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     // event selection
@@ -1735,7 +1755,7 @@ struct HadronPhotonCorrelation {
             fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonDirect>(histFillInfo);
             // log unexpected status
             if (assocParticle.getGenStatusCode() != statusDirect) {
-              LOGF(info, "filled direct photon with status: %i", assocParticle.getGenStatusCode());
+              histos.fill(HIST("mc/info/h1_unusualStatus_photonDirect"), assocParticle.getGenStatusCode())
             }
           }
         }
@@ -1837,7 +1857,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcTrue(CorrMcCollisions const& mcCollisions, aod::TrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
+  void processMcTrue(CorrMcCollisions const& mcCollisions, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
   {
     for (auto const& mcCollision : mcCollisions) {
       // event selection
@@ -1896,7 +1916,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrue, "process mc-true (all collisions) for multiple associated particles", false);
 
-  void processMcTrueRecoEv(CorrCollisionsMcD const& collisions, CorrMcCollisions const&, aod::TrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
+  void processMcTrueRecoEv(HpcCollisionsMcD const& collisions, CorrMcCollisions const&, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
   {
     for (auto const& collision : collisions) {
       // event selection
@@ -1961,7 +1981,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
 
-  void processMcTrueRecoEvRecoPtTrig(CorrCollisionsMcD const& collisions, soa::Join<aod::Triggers, aod::TriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
+  void processMcTrueRecoEvRecoPtTrig(HpcCollisionsMcD const& collisions, soa::Join<aod::hpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
                                       CorrMcCollisions const&, aod::JetParticles const& mcParticles)
   {
     for (auto const& collision : collisions) {
@@ -2140,19 +2160,19 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcRecoHadron(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::Hadrons const& hadrons)
+  void processMcRecoHadron(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
     fillProcessMcRecoStd<AssocType::Hadron>(collisions, triggers, hadrons);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoHadron, "process standard for associated hardon with additional mc information", false);
 
-  void processMcRecoPipm(CorrCollisions const& collisions, aod::Triggers const& triggers, aod::Pipms const& pipms)
+  void processMcRecoPipm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
     fillProcessMcRecoStd<AssocType::Pipm>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPipm, "process standard for associated pipm with additional mc information", false);
 
-  void processMcRecoPhotonPcm(CorrCollisions const& collisions, aod::Triggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processMcRecoPhotonPcm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
                               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessMcRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -2296,7 +2316,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcRecoPhotonPcmPair(CorrCollisions const& collisions, aod::Triggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processMcRecoPhotonPcmPair(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
                                   aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcesMcRecoPhotonPcmPair(collisions, triggers, photonPcmPairs);
@@ -2306,7 +2326,7 @@ struct HadronPhotonCorrelation {
   // other ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processPcmDcaZTrue(CorrCollisionsMcD::iterator const& collision, soa::Join<PhotonPcmsWithV0, aod::PhotonPcmTrackIds> const& photonPcms,
+  void processPcmDcaZTrue(HpcCollisionsMcD::iterator const& collision, soa::Join<PhotonPcmsWithV0, aod::HpcPhotonPcmTrackIds> const& photonPcms,
                           aod::V0PhotonsKF const&, aod::V0Legs const&, aod::JetTracksMCD const&, CorrMcCollisions const&, aod::JetParticles const&)
   {
     // event selection
@@ -2342,7 +2362,7 @@ struct HadronPhotonCorrelation {
   // last /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processRecoLast(CorrCollisions const& collisions, aod::Triggers const& triggers)
+  void processRecoLast(HpcCollisions const& collisions, aod::hpcTriggers const& triggers)
   {
     // do at end of each data frame (after other reco correlation process functions)
     // (PROCESS_SWITCH of this process has to be declared last)
@@ -2381,8 +2401,8 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoLast, "process general info for reconstructed collisions and later correlations last", true);
 
-  void processMcLast(CorrCollisionsMcD const& collisions, soa::Join<aod::Triggers, aod::TriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
-                     CorrMcCollisions const& mcCollisions, aod::TrueTriggers const& trueTriggers, aod::JetParticles const&)
+  void processMcLast(HpcCollisionsMcD const& collisions, soa::Join<aod::hpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
+                     CorrMcCollisions const& mcCollisions, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const&)
   {
     // do at end of each data frame (after other mc correlation process functions)
     // (PROCESS_SWITCH of this process has to be declared last)

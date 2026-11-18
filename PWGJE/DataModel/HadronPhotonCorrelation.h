@@ -24,6 +24,8 @@
 
 #include <Framework/AnalysisDataModel.h>
 
+namespace hpc {
+
 enum class AssocType {
   Hadron,
   Pipm,
@@ -110,11 +112,13 @@ bool constexpr AlwaysFalseType = false;
 template <auto>
 bool constexpr AlwaysFalseValue = false;
 
+} // namespace hpc
+
 namespace o2::aod
 {
 
 // common correlation columns
-namespace corr_common
+namespace hpc_common
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetMcCollision, jetMcCollision, int, JMcCollisions, "");
 DECLARE_SOA_COLUMN(SelEv, selEv, bool);
@@ -123,12 +127,12 @@ DECLARE_SOA_COLUMN(PtTruePure, ptTruePure, float);
 DECLARE_SOA_COLUMN(PtTrueOrigin, ptTrueOrigin, float); // and the blind forest
 DECLARE_SOA_COLUMN(Phi, phi, float);
 DECLARE_SOA_COLUMN(Eta, eta, float);
-} // namespace corr_common
+} // namespace hpc_common
 
 // reco
 
 // correlation collision
-namespace corr_collision
+namespace hpc_collision
 {
 // plain jet collision column for derived data
 DECLARE_SOA_COLUMN(JetCollisionId, jetCollisionId, int);
@@ -137,85 +141,85 @@ DECLARE_SOA_COLUMN(TrigEv, trigEv, bool);
 DECLARE_SOA_COLUMN(PtMax, ptMax, float);
 DECLARE_SOA_COLUMN(PosZ, posZ, float);
 DECLARE_SOA_COLUMN(NGlobalTracks, nGlobalTracks, int);
-} // namespace corr_collision
-DECLARE_SOA_TABLE(CorrCollisions, "AOD", "CORRCOLLISION",
+} // namespace hpc_collision
+DECLARE_SOA_TABLE(HpcCollisions, "AOD", "HPCCOL",
                   o2::soa::Index<>,
-                  corr_common::SelEv, corr_collision::ThirdDecimalTruePosZ, corr_collision::TrigEv, corr_collision::PtMax, corr_collision::PosZ, corr_collision::NGlobalTracks);
-DECLARE_SOA_TABLE(CorrCollisionIds, "AOD", "CORRCOLLISIONID",
-                  corr_collision::JetCollisionId);
-DECLARE_SOA_TABLE(CorrCollisionMcIds, "AOD", "CORRCOLLISIONMCID",
-                  corr_common::JetMcCollisionId);
+                  hpc_common::SelEv, hpc_collision::ThirdDecimalTruePosZ, hpc_collision::TrigEv, hpc_collision::PtMax, hpc_collision::PosZ, hpc_collision::NGlobalTracks);
+DECLARE_SOA_TABLE(HpcCollisionIds, "AOD", "HPCCOLID",
+                  hpc_collision::JetCollisionId);
+DECLARE_SOA_TABLE(HpcCollisionMcIds, "AOD", "HPCCOLMCID",
+                  hpc_common::JetMcCollisionId);
 
 // add to common columns
-namespace corr_common
+namespace hpc_common
 {
-DECLARE_SOA_INDEX_COLUMN_FULL(CorrCollision, corrCollision, int, CorrCollisions, "");
-} // namespace corr_common
+DECLARE_SOA_INDEX_COLUMN_FULL(CorrCollision, corrCollision, int, HpcCorrCollisions, "");
+} // namespace hpc_common
 
 // trigger
-namespace trigger
+namespace hpc_trigger
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetTrack, jetTrack, int, JetTracks, "");
-} // namespace trigger
-DECLARE_SOA_TABLE(Triggers, "AOD", "TRIGGER",
-                  o2::soa::Index<>, corr_common::CorrCollisionId,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta);
-DECLARE_SOA_TABLE(TriggerTrackIds, "AOD", "TRIGGERTRACKID",
-                  trigger::JetTrackId);
+} // namespace hpc_collision
+DECLARE_SOA_TABLE(HpcTriggers, "AOD", "HPCTRIG",
+                  o2::soa::Index<>, hpc_common::CorrCollisionId,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta);
+DECLARE_SOA_TABLE(HpcTriggerTrackIds, "AOD", "HPCTRIGTRID",
+                  hpc_collision::JetTrackId);
 
 // add to common columns
-namespace corr_common
+namespace hpc_common
 {
-DECLARE_SOA_ARRAY_INDEX_COLUMN_FULL(IntersectTrigger, intersectTrigger, int, Triggers, "");
-} // namespace corr_common
+DECLARE_SOA_ARRAY_INDEX_COLUMN_FULL(IntersectTrigger, intersectTrigger, int, HpcTriggers, "");
+} // namespace hpc_common
 
-// hadrons (global tracks)
-namespace hadron
+// hadron (global tracks)
+namespace hpc_hadron
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetTrack, jetTrack, int, JetTracks, "");
 DECLARE_SOA_COLUMN(TruthLevelRecoHadron, truthLevelRecoHadron, int);
-} // namespace hadron
-DECLARE_SOA_TABLE(Hadrons, "AOD", "HADRON",
-                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  hadron::TruthLevelRecoHadron, corr_common::PtTruePure);
-DECLARE_SOA_TABLE(HadronTrackIds, "AOD", "HADRONTRACKID",
-                  hadron::JetTrackId);
+} // namespace hpc_hadron
+DECLARE_SOA_TABLE(HpcHadrons, "AOD", "HPCHAD",
+                  o2::soa::Index<>, hpc_common::CorrCollisionId, hpc_common::IntersectTriggerIds,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta,
+                  hpc_hadron::TruthLevelRecoHadron, hpc_common::PtTruePure);
+DECLARE_SOA_TABLE(HpcHadronTrackIds, "AOD", "HPCHADTRID",
+                  hpc_hadron::JetTrackId);
 
 // pipm
-namespace pipm
+namespace hpc_pipm
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetTrack, jetTrack, int, JetTracks, "");
 DECLARE_SOA_COLUMN(TruthLevelRecoPipm, truthLevelRecoPipm, int);
-} // namespace pipm
-DECLARE_SOA_TABLE(Pipms, "AOD", "PIPM",
-                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  pipm::TruthLevelRecoPipm, corr_common::PtTruePure);
-DECLARE_SOA_TABLE(PipmTrackIds, "AOD", "PIPMTRACKID",
-                  pipm::JetTrackId);
+} // namespace hpc_pipm
+DECLARE_SOA_TABLE(HpcPipms, "AOD", "HPCPIPM",
+                  o2::soa::Index<>, hpc_common::CorrCollisionId, hpc_common::IntersectTriggerIds,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta,
+                  hpc_pipm::TruthLevelRecoPipm, hpc_common::PtTruePure);
+DECLARE_SOA_TABLE(HpcPipmTrackIds, "AOD", "HPCPIPMTRID",
+                  hpc_pipm::JetTrackId);
 
 // photonPcm
-namespace photon_pcm
+namespace hpc_photon_pcm
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF, v0PhotonKF, int, V0PhotonsKF, "");
 DECLARE_SOA_INDEX_COLUMN_FULL(PosJetTrack, posJetTrack, int, JetTracks, "_pos");
 DECLARE_SOA_INDEX_COLUMN_FULL(NegJetTrack, negJetTrack, int, JetTracks, "_neg");
 DECLARE_SOA_COLUMN(TruthLevelRecoPhotonPcm, truthLevelRecoPhotonPcm, int);
 DECLARE_SOA_COLUMN(ImpurityPhotonPcm, impurityPhotonPcm, int);
-} // namespace photon_pcm
-DECLARE_SOA_TABLE(PhotonPcms, "AOD", "PHOTONPCM",
-                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta,
-                  photon_pcm::TruthLevelRecoPhotonPcm, corr_common::PtTruePure,
-                  photon_pcm::ImpurityPhotonPcm, corr_common::PtTrueOrigin);
-DECLARE_SOA_TABLE(PhotonPcmTrackIds, "AOD", "PHOTONPCMTRACKID",
-                  photon_pcm::PosJetTrackId, photon_pcm::NegJetTrackId);
-DECLARE_SOA_TABLE(PhotonPcmV0PhotonIds, "AOD", "PHOTONPCMV0PHOTONID",
-                  photon_pcm::V0PhotonKFId);
+} // namespace hpc_photon_pcm
+DECLARE_SOA_TABLE(HpcPhotonPcms, "AOD", "HPCPHPCM",
+                  o2::soa::Index<>, hpc_common::CorrCollisionId, hpc_common::IntersectTriggerIds,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta,
+                  hpc_photon_pcm::TruthLevelRecoPhotonPcm, hpc_common::PtTruePure,
+                  hpc_photon_pcm::ImpurityPhotonPcm, hpc_common::PtTrueOrigin);
+DECLARE_SOA_TABLE(HpcPhotonPcmTrackIds, "AOD", "HPCPHPCMTRID",
+                  hpc_photon_pcm::PosJetTrackId, hpc_photon_pcm::NegJetTrackId);
+DECLARE_SOA_TABLE(HpcPhotonPcmV0PhotonIds, "AOD", "HPCPHPCMV0ID",
+                  hpc_photon_pcm::V0PhotonKFId);
 
 // photonPcm pairs
-namespace photon_pcm_pair
+namespace hpc_photon_pcm_pair
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF1, v0PhotonKF1, int, V0PhotonsKF, "_1");
 DECLARE_SOA_INDEX_COLUMN_FULL(V0PhotonKF2, v0PhotonKF2, int, V0PhotonsKF, "_2");
@@ -227,38 +231,39 @@ DECLARE_SOA_COLUMN(Mgg, mgg, float);
 DECLARE_SOA_COLUMN(TruthLevelRecoPi0Pcm, truthLevelRecoPi0Pcm, int);
 DECLARE_SOA_COLUMN(TruthLevelRecoEtaPcm, truthLevelRecoEtaPcm, int);
 DECLARE_SOA_COLUMN(ImpurityPi0Pcm, impurityPi0Pcm, int);
-} // namespace photon_pcm_pair
-DECLARE_SOA_TABLE(PhotonPcmPairs, "AOD", "PHOTONPCMPAIR",
-                  o2::soa::Index<>, corr_common::CorrCollisionId, corr_common::IntersectTriggerIds,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta, photon_pcm_pair::Mgg,
-                  photon_pcm_pair::TruthLevelRecoPi0Pcm, photon_pcm_pair::TruthLevelRecoEtaPcm, corr_common::PtTruePure,
-                  photon_pcm_pair::ImpurityPi0Pcm, corr_common::PtTrueOrigin);
-DECLARE_SOA_TABLE(PhotonPcmPairTrackIds, "AOD", "PHOTONPCMPAIRTRACKID",
-                  photon_pcm_pair::PosJetTrack1Id, photon_pcm_pair::NegJetTrack1Id, photon_pcm_pair::PosJetTrack2Id, photon_pcm_pair::NegJetTrack2Id);
-DECLARE_SOA_TABLE(PhotonPcmPairV0PhotonIds, "AOD", "PHOTONPCMPAIRV0PHOTONID",
-                  photon_pcm_pair::V0PhotonKF1Id, photon_pcm_pair::V0PhotonKF2Id);
+} // namespace hpc_photon_pcm_pair
+DECLARE_SOA_TABLE(HpcPhotonPcmPairs, "AOD", "HPCPCMPAIR",
+                  o2::soa::Index<>, hpc_common::CorrCollisionId, hpc_common::IntersectTriggerIds,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta, hpc_photon_pcm_pair::Mgg,
+                  hpc_photon_pcm_pair::TruthLevelRecoPi0Pcm, hpc_photon_pcm_pair::TruthLevelRecoEtaPcm, hpc_common::PtTruePure,
+                  hpc_photon_pcm_pair::ImpurityPi0Pcm, hpc_common::PtTrueOrigin);
+DECLARE_SOA_TABLE(HpcPhotonPcmPairTrackIds, "AOD", "HPCPCMPAIRTRID",
+                  hpc_photon_pcm_pair::PosJetTrack1Id, hpc_photon_pcm_pair::NegJetTrack1Id, hpc_photon_pcm_pair::PosJetTrack2Id, hpc_photon_pcm_pair::NegJetTrack2Id);
+DECLARE_SOA_TABLE(HpcPhotonPcmPairV0PhotonIds, "AOD", "HPCPCMPAIRV0ID",
+                  hpc_photon_pcm_pair::V0PhotonKF1Id, hpc_photon_pcm_pair::V0PhotonKF2Id);
 
 // mc
 
 // mcCollision extension
-namespace mc_collision_extra_corr
+namespace hpc_mc_collision_extra
 {
 DECLARE_SOA_COLUMN(ThirdDecimalTruePosZ, thirdDecimalTruePosZ, int);
 DECLARE_SOA_COLUMN(TrigEv, trigEv, bool);
 DECLARE_SOA_COLUMN(PtMax, ptMax, float);
 DECLARE_SOA_COLUMN(NChargedInEtaRange, nChargedInEtaRange, int);
-} // namespace mc_collision_extra_corr
-DECLARE_SOA_TABLE(McCollisionsExtraCorr, "AOD", "MCCOLLISIONEXTRACORR",
-                  corr_common::SelEv, mc_collision_extra_corr::ThirdDecimalTruePosZ, mc_collision_extra_corr::TrigEv, mc_collision_extra_corr::PtMax, mc_collision_extra_corr::NChargedInEtaRange);
+} // namespace hpc_mc_collision_extra
+DECLARE_SOA_TABLE(HpcMcCollisionsExtra, "AOD", "HPCMCCOLEXTRA",
+                  hpc_common::SelEv, hpc_mc_collision_extra::ThirdDecimalTruePosZ, hpc_mc_collision_extra::TrigEv, hpc_mc_collision_extra::PtMax, hpc_mc_collision_extra::NChargedInEtaRange);
 
 // trigger
-namespace true_trigger
+namespace hpc_true_trigger
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetMcParticle, jetMcParticle, int, JetParticles, "");
-} // namespace true_trigger
-DECLARE_SOA_TABLE(TrueTriggers, "AOD", "TRUETRIGGER",
-                  o2::soa::Index<>, corr_common::JetMcCollisionId, true_trigger::JetMcParticleId,
-                  corr_common::Pt, corr_common::Phi, corr_common::Eta);
+} // namespace hpc_true_trigger
+DECLARE_SOA_TABLE(HpcTrueTriggers, "AOD", "HPCTRUETRIG",
+                  o2::soa::Index<>, hpc_common::JetMcCollisionId, hpc_true_trigger::JetMcParticleId,
+                  hpc_common::Pt, hpc_common::Phi, hpc_common::Eta);
+
 } // namespace o2::aod
 
 #endif // PWGJE_DATAMODEL_HADRONPHOTONCORRELATION_H_

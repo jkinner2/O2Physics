@@ -57,6 +57,7 @@
 
 using namespace o2;
 using namespace o2::framework;
+using namespace hpc;
 
 // correlation derived data ===================================================================================================================================================================
 
@@ -68,24 +69,24 @@ concept IsMcCollision = requires(T& collision) { collision.getGeneratorId(); };
 struct HadronPhotonProducer {
   struct : ProducesGroup {
     // reco
-    Produces<aod::CorrCollisions> corrCollision;
-    Produces<aod::CorrCollisionIds> corrCollisionId;
-    Produces<aod::CorrCollisionMcIds> corrCollisionMcId;
-    Produces<aod::Triggers> trigger;
-    Produces<aod::TriggerTrackIds> triggerTrackId;
-    Produces<aod::Hadrons> hadron;
+    Produces<aod::HpcCollisions> collision;
+    Produces<aod::HpcCollisionIds> collisionId;
+    Produces<aod::HpcCollisionMcIds> collisionMcId;
+    Produces<aod::HpcTriggers> trigger;
+    Produces<aod::HpcTriggerTrackIds> triggerTrackId;
+    Produces<aod::HpcHadrons> hadron;
     Produces<aod::HadronTrackIds> hadronTrackId;
-    Produces<aod::Pipms> pipm;
-    Produces<aod::PipmTrackIds> pipmTrackId;
-    Produces<aod::PhotonPcms> photonPcm;
-    Produces<aod::PhotonPcmTrackIds> photonPcmTrackId;
-    Produces<aod::PhotonPcmV0PhotonIds> photonPcmV0PhotonId;
-    Produces<aod::PhotonPcmPairs> photonPcmPair;
-    Produces<aod::PhotonPcmPairTrackIds> photonPcmPairTrackId;
-    Produces<aod::PhotonPcmPairV0PhotonIds> photonPcmPairV0PhotonId;
+    Produces<aod::HpcPipms> pipm;
+    Produces<aod::HpcPipmTrackIds> pipmTrackId;
+    Produces<aod::HpcPhotonPcms> photonPcm;
+    Produces<aod::HpcPhotonPcmTrackIds> photonPcmTrackId;
+    Produces<aod::HpcPhotonPcmV0PhotonIds> photonPcmV0PhotonId;
+    Produces<aod::HpcPhotonPcmPairs> photonPcmPair;
+    Produces<aod::HpcPhotonPcmPairTrackIds> photonPcmPairTrackId;
+    Produces<aod::HpcPhotonPcmPairV0PhotonIds> photonPcmPairV0PhotonId;
     // true
-    Produces<aod::McCollisionsExtraCorr> mcCollisionExtraCorr;
-    Produces<aod::TrueTriggers> trueTrigger;
+    Produces<aod::HpcMcCollisionsExtra> mcCollisionExtraCorr;
+    Produces<aod::HpcTrueTriggers> trueTrigger;
   } tableProduction;
 
   Configurable<double> zPvMax{"zPvMax", 7, "maximum absZ primary-vertex cut"};
@@ -99,23 +100,20 @@ struct HadronPhotonProducer {
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
 
+  Configurable<double> absEtaMax{"absEtaMax", 0.8, "maximum absEta cut"};
+  Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pt of triggers"};
   Configurable<double> ptMinTrack{"ptMinTrack", 0.1, "min pt value for tracks (hadron, pipm, mult, trig,... (not v0 legs or other external))"};
   Configurable<double> ptMinHadron{"ptMinHadron", 0.2, "min pt value for hadrons"};
   Configurable<double> piPidLowPt{"piPidLowPt", 0.5, "max pt value for pipm pid without tof"};
   Configurable<double> piPidHighPt{"piPidHighPt", 2.5, "min pt value for pipm pid without tof in relativistic rise of Bethe-Bloch"};
   Configurable<std::vector<double>> nSigmaPiTpcLowPt{"nSigmaPiTpcLowPt", {-2, 2}, "minimum-maximum nSigma for pipm in tpc at low pt"};
   Configurable<std::vector<double>> nSigmaPiTpcMidPt{"nSigmaPiTpcMidPt", {-1, 1}, "minimum-maximum nSigma for pipm in tpc at mid pt"};
-  Configurable<std::vector<double>> nSigmaPiTof{"nSigmaPiTof", {-1, 2}, "minimum-maximum nSigma for pipm in tof"};
+  Configurable<std::vector<double>> nSigmaPiTof{"nSigmaPiTof", {-2, 1}, "minimum-maximum nSigma for pipm in tof"};
   Configurable<std::vector<double>> nSigmaPiRelRise{"nSigmaPiRelRise", {0, 2}, "minimum-maximum nSigma pipm tpc at high pt"};
 
   Configurable<std::vector<double>> pcmAbsDcaZLim{"pcmAbsDcaZLim", {0, 5}, "absolute values of dcaZ limits for pcm"};
 
   Configurable<bool> oneTriggerPerEvent{"oneTriggerPerEvent", false, "use only one trigger (of highest pt) in an event"};
-
-  // configurables from other tasks
-
-  double absEtaMax = -1;
-  double ptTrigMin = -1;
 
   // derivatives of configurables
 
@@ -483,12 +481,13 @@ struct HadronPhotonProducer {
     trackSelection = jetderiveddatautilities::initialiseTrackSelection(static_cast<std::string>(trackSelections));
     triggerMaskBits = jetderiveddatautilities::initialiseTriggerMaskBits(triggerMasks);
 
-    // get variables from other tasks
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-correlation", "absEtaMax", absEtaMax, false)) {
-      throw std::runtime_error("absEtaMax not set");
-    };
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-correlation", "ptTrigMin", ptTrigMin, false)) {
-      throw std::runtime_error("ptTrigMin not set");
+    // check config
+    if (static_cast<int>(doprocessRecoCollisionTrigger) + static_cast<int>(processMcRecoCollisionTrigger) > 1) {
+      throw std::runtime_error("invalid doprocess-collisionTrigger config");
+    }
+    if (static_cast<int>(doprocessRecoHadronPipmTPCTOF) + static_cast<int>(doprocessMcRecoHadronPipmTPCTOF) +
+        static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) > 1) {
+      throw std::runtime_error("invalid doprocess-hadronPipm config");
     }
 
     // histograms
@@ -584,11 +583,11 @@ struct HadronPhotonProducer {
       // collision info
       histos.fill(HIST("reco/h2_zPvMult"), collision.posZ(), nGlobalTracks);
       histos.fill(HIST("reco/h1_hadronicRate"), collision.hadronicRate());
-      tableProduction.corrCollision(isSelectedEvent, thirdDecimalTruePosZ, isTriggerEvent, maxTrackPt, collision.posZ(), nGlobalTracks);
-      tableProduction.corrCollisionId(collision.globalIndex());
+      tableProduction.collision(isSelectedEvent, thirdDecimalTruePosZ, isTriggerEvent, maxTrackPt, collision.posZ(), nGlobalTracks);
+      tableProduction.collisionId(collision.globalIndex());
       // mc true collsion label
       if constexpr (IsCollisionMCD<decltype(collision)>) {
-        tableProduction.corrCollisionMcId(collision.mcCollisionId());
+        tableProduction.collisionMcId(collision.mcCollisionId());
       }
     }
   }
@@ -762,7 +761,7 @@ struct HadronPhotonProducer {
                                   v0Photon.pt(), v0Photon.phi(), v0Photon.eta(),
                                   static_cast<int>(truthLevelInfoPhotonPcm.truthLevel), truthLevelInfoPhotonPcm.ptTruePure,
                                   static_cast<int>(impurityInfoPhotonPcm.impurity), impurityInfoPhotonPcm.ptTrueOrigin);
-        tableProduction.photonPcmTrackId(v0Photon.posTrack().trackId(), v0Photon.negTrack().trackId());
+        tableProduction.photonPcmTrackId(posTrack.globalIndex(), negTrack.globalIndex());
         tableProduction.photonPcmV0PhotonId(v0Photon.globalIndex());
       }
 
@@ -776,6 +775,9 @@ struct HadronPhotonProducer {
         ROOT::Math::PtEtaPhiMVector const p4V0PcmPair = p4V0Pcm1 + p4V0Pcm2;
 
         // pair selection
+        if (std::abs(v0Photon1.eta()) > absEtaMax || std::abs(v0Photon2.eta()) > absEtaMax) {
+          continue;
+        }
         if (std::abs(p4V0PcmPair.Eta()) > absEtaMax) {
           continue;
         }
@@ -825,7 +827,7 @@ struct HadronPhotonProducer {
                                       p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta(), p4V0PcmPair.M(),
                                       static_cast<int>(truthLevelInfoPi0Pcm.truthLevel), static_cast<int>(truthLevelInfoEtaPcm.truthLevel), ptTruePurePhotonPcmPair,
                                       static_cast<int>(photonImpurityInfoPi0Pcm.impurity), photonImpurityInfoPi0Pcm.ptTrueOrigin);
-        tableProduction.photonPcmPairTrackId(v0Photon1.posTrack().trackId(), v0Photon1.negTrack().trackId(), v0Photon2.posTrack().trackId(), v0Photon2.negTrack().trackId());
+        tableProduction.photonPcmPairTrackId(posTrack1.globalIndex(), negTrack1.globalIndex(), posTrack2.globalIndex(), negTrack2.globalIndex());
         tableProduction.photonPcmPairV0PhotonId(v0Photon1.globalIndex(), v0Photon2.globalIndex());
       }
     }
