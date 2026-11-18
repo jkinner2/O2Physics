@@ -153,19 +153,19 @@ DECLARE_SOA_TABLE(HpcCollisionMcIds, "AOD", "HPCCOLMCID",
 // add to common columns
 namespace hpc_common
 {
-DECLARE_SOA_INDEX_COLUMN_FULL(CorrCollision, corrCollision, int, HpcCorrCollisions, "");
+DECLARE_SOA_INDEX_COLUMN_FULL(CorrCollision, corrCollision, int, HpcCollisions, "");
 } // namespace hpc_common
 
 // trigger
 namespace hpc_trigger
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetTrack, jetTrack, int, JetTracks, "");
-} // namespace hpc_collision
+} // namespace hpc_trigger
 DECLARE_SOA_TABLE(HpcTriggers, "AOD", "HPCTRIG",
                   o2::soa::Index<>, hpc_common::CorrCollisionId,
                   hpc_common::Pt, hpc_common::Phi, hpc_common::Eta);
 DECLARE_SOA_TABLE(HpcTriggerTrackIds, "AOD", "HPCTRIGTRID",
-                  hpc_collision::JetTrackId);
+                  hpc_trigger::JetTrackId);
 
 // add to common columns
 namespace hpc_common

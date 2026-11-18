@@ -63,10 +63,12 @@
 #include <format>
 #include <functional>
 #include <initializer_list>
+#include <map>
 #include <memory>
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <string_view>
 #include <type_traits>
 #include <unordered_set>
@@ -296,7 +298,7 @@ struct HadronPhotonCorrelation {
 
   // prepare for per collision slicing
   Preslice<aod::JetTracks> perColTracks = aod::jtrack::collisionId;
-  Preslice<aod::hpcTriggers> perColTriggers = aod::hpc_common::corrCollisionId;
+  Preslice<aod::HpcTriggers> perColTriggers = aod::hpc_common::corrCollisionId;
   Preslice<aod::HpcHadrons> perColHadrons = aod::hpc_common::corrCollisionId;
   Preslice<aod::HpcPipms> perColPipms = aod::hpc_common::corrCollisionId;
   Preslice<aod::HpcPhotonPcms> perColPhotonPcms = aod::hpc_common::corrCollisionId;
@@ -457,6 +459,16 @@ struct HadronPhotonCorrelation {
     return result;
   }
 
+  static std::vector<double> getBinEdges(TH1 const* h1)
+  {
+    std::vector<double> edges;
+    for (int iBin = 1; iBin <= h1->GetNbinsX(); iBin++) {
+      edges.push_back(h1->GetXaxis()->GetBinLowEdge(iBin));
+    }
+    edges.push_back(h1->GetXaxis()->GetXmax());
+    return edges;
+  }
+
   // get histograms from ccdb
   // save corrections from ccdb in histogram registry
   void initCcdbHistograms(int64_t const noLaterThanCcdb)
@@ -466,7 +478,7 @@ struct HadronPhotonCorrelation {
       h1PtCorrectionTrigger = ccdb->getForTimeStamp<TH1D>(config.pathCcdbAnalysis.value + "/correction/trigger", noLaterThanCcdb);
 
       const double* bins = h1PtCorrectionTrigger->GetXaxis()->GetXbins()->GetArray();
-      const AxisSpec axis{std::vector<double>(bins, bins + h1PtCorrectionTrigger->GetNbinsX() + 1), "#it{p}_{T}"};
+      const AxisSpec axis{getBinEdges(h1PtCorrectionTrigger), "#it{p}_{T}"};
       histos.add("usedObjectsCcdb/h1_pt_correction_trigger_ccdb", "h1_pt_correction_trigger_ccdb", kTH1D, {axis}, true);
       for (int iBin = 0; iBin <= h1PtCorrectionTrigger->GetNbinsX() + 1; iBin++) {
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_correction_trigger_ccdb"))->SetBinContent(iBin, h1PtCorrectionTrigger->GetBinContent(iBin));
@@ -478,7 +490,7 @@ struct HadronPhotonCorrelation {
       h1PtScalingK0Short = ccdb->getForTimeStamp<TH1D>(config.pathCcdbAnalysis.value + "/scaling/K0Short", noLaterThanCcdb);
 
       const double* bins = h1PtScalingK0Short->GetXaxis()->GetXbins()->GetArray();
-      const AxisSpec axis{std::vector<double>(bins, bins + h1PtScalingK0Short->GetNbinsX() + 1), "#it{p}_{T}"};
+      const AxisSpec axis{getBinEdges(h1PtScalingK0Short), "#it{p}_{T}"};
       histos.add("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb", "h1_pt_scaling_K0Short_ccdb", kTH1D, {axis}, true);
       for (int iBin = 0; iBin <= h1PtScalingK0Short->GetNbinsX() + 1; iBin++) {
         histos.get<TH1>(HIST("usedObjectsCcdb/h1_pt_scaling_K0Short_ccdb"))->SetBinContent(iBin, h1PtScalingK0Short->GetBinContent(iBin));
@@ -602,7 +614,7 @@ struct HadronPhotonCorrelation {
     // define axes
     const AxisSpec axisN{1, 0., 1., "#it{N}_{something}"};
     const AxisSpec axisCategories{32, 0., 32., "categories"};
-    const AxisSpec axisInts{-2049, -1024.5, 1024.5, "ints"};
+    const AxisSpec axisInts{2049, -1024.5, 1024.5, "ints"};
 
     const AxisSpec axisZPv{configHist.nBinsZPvPlain, -7, 7, "#it{z}_{pv}"};
     const AxisSpec axisMult{configHist.nBinsMultPlain + 1, -0.5, configHist.nBinsMultPlain + 0.5, "multiplicity"};
@@ -1347,7 +1359,7 @@ struct HadronPhotonCorrelation {
   // analysis tasks ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/
 
-  void init(InitContext const&)
+  void init(InitContext& initContext)
   {
     double const doublePrecisionDeltaCheck = 1e-5;
     double absEtaMaxProducer;
@@ -1502,19 +1514,19 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processRecoHadron(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
+  void processRecoHadron(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
     fillProcessRecoStd<AssocType::Hadron>(collisions, triggers, hadrons);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoHadron, "process standard for associated hardon", false);
 
-  void processRecoPipm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcPipms const& pipms)
+  void processRecoPipm(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
     fillProcessRecoStd<AssocType::Pipm>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPipm, "process standard for associated pipm", false);
 
-  void processRecoPhotonPcm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processRecoPhotonPcm(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
                             aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -1546,7 +1558,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processRecoPhotonPcmPair(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processRecoPhotonPcmPair(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
                                 aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     for (auto const& collision : collisions) {
@@ -1755,7 +1767,7 @@ struct HadronPhotonCorrelation {
             fillHistMain<HistFillModeV, TruthLevelV, AssocType::PhotonDirect>(histFillInfo);
             // log unexpected status
             if (assocParticle.getGenStatusCode() != statusDirect) {
-              histos.fill(HIST("mc/info/h1_unusualStatus_photonDirect"), assocParticle.getGenStatusCode())
+              histos.fill(HIST("mc/info/h1_unusualStatus_photonDirect"), assocParticle.getGenStatusCode());
             }
           }
         }
@@ -1981,7 +1993,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
 
-  void processMcTrueRecoEvRecoPtTrig(HpcCollisionsMcD const& collisions, soa::Join<aod::hpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
+  void processMcTrueRecoEvRecoPtTrig(HpcCollisionsMcD const& collisions, soa::Join<aod::HpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
                                       CorrMcCollisions const&, aod::JetParticles const& mcParticles)
   {
     for (auto const& collision : collisions) {
@@ -2160,19 +2172,19 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcRecoHadron(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
+  void processMcRecoHadron(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
     fillProcessMcRecoStd<AssocType::Hadron>(collisions, triggers, hadrons);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoHadron, "process standard for associated hardon with additional mc information", false);
 
-  void processMcRecoPipm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, aod::HpcPipms const& pipms)
+  void processMcRecoPipm(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
     fillProcessMcRecoStd<AssocType::Pipm>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPipm, "process standard for associated pipm with additional mc information", false);
 
-  void processMcRecoPhotonPcm(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processMcRecoPhotonPcm(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
                               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessMcRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -2316,7 +2328,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcRecoPhotonPcmPair(HpcCollisions const& collisions, aod::hpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processMcRecoPhotonPcmPair(HpcCollisions const& collisions, aod::HpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
                                   aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcesMcRecoPhotonPcmPair(collisions, triggers, photonPcmPairs);
@@ -2362,7 +2374,7 @@ struct HadronPhotonCorrelation {
   // last /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processRecoLast(HpcCollisions const& collisions, aod::hpcTriggers const& triggers)
+  void processRecoLast(HpcCollisions const& collisions, aod::HpcTriggers const& triggers)
   {
     // do at end of each data frame (after other reco correlation process functions)
     // (PROCESS_SWITCH of this process has to be declared last)
@@ -2401,7 +2413,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoLast, "process general info for reconstructed collisions and later correlations last", true);
 
-  void processMcLast(HpcCollisionsMcD const& collisions, soa::Join<aod::hpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
+  void processMcLast(HpcCollisionsMcD const& collisions, soa::Join<aod::HpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
                      CorrMcCollisions const& mcCollisions, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const&)
   {
     // do at end of each data frame (after other mc correlation process functions)

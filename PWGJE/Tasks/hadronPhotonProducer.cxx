@@ -23,7 +23,6 @@
 #include "PWGEM/PhotonMeson/DataModel/gammaTables.h"
 
 #include "Common/Core/RecoDecay.h"
-#include "Common/Core/TableHelper.h"
 #include "Common/DataModel/PIDResponseTOF.h"
 #include "Common/DataModel/PIDResponseTPC.h"
 
@@ -75,7 +74,7 @@ struct HadronPhotonProducer {
     Produces<aod::HpcTriggers> trigger;
     Produces<aod::HpcTriggerTrackIds> triggerTrackId;
     Produces<aod::HpcHadrons> hadron;
-    Produces<aod::HadronTrackIds> hadronTrackId;
+    Produces<aod::HpcHadronTrackIds> hadronTrackId;
     Produces<aod::HpcPipms> pipm;
     Produces<aod::HpcPipmTrackIds> pipmTrackId;
     Produces<aod::HpcPhotonPcms> photonPcm;
@@ -474,7 +473,7 @@ struct HadronPhotonProducer {
 
   // analysis /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  void init(InitContext& initContext)
+  void init(InitContext const&)
   {
     // selection JE utilities
     eventSelectionBits = jetderiveddatautilities::initialiseEventSelectionBits(static_cast<std::string>(eventSelections));
@@ -482,12 +481,15 @@ struct HadronPhotonProducer {
     triggerMaskBits = jetderiveddatautilities::initialiseTriggerMaskBits(triggerMasks);
 
     // check config
-    if (static_cast<int>(doprocessRecoCollisionTrigger) + static_cast<int>(processMcRecoCollisionTrigger) > 1) {
+    if (static_cast<int>(doprocessRecoCollisionTrigger) + static_cast<int>(doprocessMcRecoCollisionTrigger) > 1) {
       throw std::runtime_error("invalid doprocess-collisionTrigger config");
     }
     if (static_cast<int>(doprocessRecoHadronPipmTPCTOF) + static_cast<int>(doprocessMcRecoHadronPipmTPCTOF) +
         static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) > 1) {
       throw std::runtime_error("invalid doprocess-hadronPipm config");
+    }
+    if (static_cast<int>(doprocessRecoPhotonPcm) + static_cast<int>(doprocessMcRecoPhotonPcm) > 1) {
+      throw std::runtime_error("invalid doprocess-photonPcm config");
     }
 
     // histograms
