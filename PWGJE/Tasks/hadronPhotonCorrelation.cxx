@@ -339,17 +339,6 @@ struct HadronPhotonCorrelation {
     Mixing
   };
 
-  enum class TriggerMemoryMode {
-    Reco,
-    True,
-    TrueRecoEv,
-    TrueRecoEvRecoPtTrig
-  };
-
-  struct HistFillInfoPlainPt {
-    double ptMax, ptAssoc;
-    double weight = 1;
-  };
   struct HistFillInfoPlainPhiEtaZPvMult {
     double ptMax, ptAssoc, phi, eta, zPv, mult;
     double weight = 1;
@@ -1293,7 +1282,7 @@ struct HadronPhotonCorrelation {
   }
 
   // mixing
-  template <TriggerMemoryMode TriggerMemoryModeV, typename T_AssocCondition = CorrConditionTrue>
+  template <TruthLevel TruthLevelV, typename T_AssocCondition = CorrConditionTrue>
   void corrProcessMixing(auto const& collision, auto const& associatedThisEvent,
                          auto const& funcMixing, size_t const nTriggerMixingAt0, T_AssocCondition const& funcConditionAssocOnly = {})
   {
@@ -1302,20 +1291,20 @@ struct HadronPhotonCorrelation {
     // mixing loops (more dynamic than O2 mixing)
     std::deque<MixingTrigger> const& savedTriggers =
       [&]() -> std::deque<MixingTrigger> const& {
-      if constexpr (TriggerMemoryModeV == TriggerMemoryMode::Reco) {
+      if constexpr (TruthLevelV == TruthLevel::Reco) {
         triggerMemoryBinSizeMin = triggerMemoryReco->getBinSizeMin();
         return triggerMemoryReco->getTriggers(collision.posZ(), collision.nGlobalTracks());
-      } else if constexpr (TriggerMemoryModeV == TriggerMemoryMode::True) {
+      } else if constexpr (TruthLevelV == TruthLevel::True) {
         triggerMemoryBinSizeMin = triggerMemoryTrue->getBinSizeMin();
         return triggerMemoryTrue->getTriggers(collision.posZ(), collision.nChargedInEtaRange());
-      } else if constexpr (TriggerMemoryModeV == TriggerMemoryMode::TrueRecoEv) {
+      } else if constexpr (TruthLevelV == TruthLevel::TrueRecoEv) {
         triggerMemoryBinSizeMin = triggerMemoryTrueRecoEv->getBinSizeMin();
         return triggerMemoryTrueRecoEv->getTriggers(collision.posZ(), collision.nChargedInEtaRange());
-      } else if constexpr (TriggerMemoryModeV == TriggerMemoryMode::TrueRecoEvRecoPtTrig) {
+      } else if constexpr (TruthLevelV == TruthLevel::TrueRecoEvRecoPtTrig) {
         triggerMemoryBinSizeMin = triggerMemoryTrueRecoEvRecoPtTrig->getBinSizeMin();
         return triggerMemoryTrueRecoEvRecoPtTrig->getTriggers(collision.posZ(), collision.nChargedInEtaRange());
       } else {
-        static_assert(AlwaysFalseValue<TriggerMemoryModeV>, "triggerMemoryMode not found");
+        static_assert(AlwaysFalseValue<TruthLevelV>, "TruthLevel not found");
       }
     }();
     // require enough mixing statistics
@@ -1442,10 +1431,25 @@ struct HadronPhotonCorrelation {
   // correlations /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // standard reco ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  template <HistFillMode HistFillModeV, AssocType AssocTypeV, bool FillMcRecoInfo>
+  void fillAssocsRecoMain(auto histFillInfo, auto const& collision, auto const& associated) {
+    if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm || AssocTypeV == AssocType::PhotonPcm) {
+      fillHistMain<HistFillModeV, TruthLevel::Reco, AssocTypeV>(histFillInfo);
+      if constexpr (FillMcRecoInfo) {
+        fillTruthLevelsMcRecoStd<HistFillModeV, AssocTypeV>(histFillInfo, collision, associated);
+      }
+    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
+      fillAssocsRecoPhotonPcmPair<HistFillModeV>(histFillInfo, collision, associated);
+      if constexpr (FillMcRecoInfo) {
+        fillAssocsMcRecoPhotonPcmPair<HistFillModeV>(histFillInfo, collision, associated);
+      }
+    } else {
+      static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
+    }
+  }
 
   template <AssocType AssocTypeV, bool FillMcRecoInfo>
-  void fillProcessRecoStd(auto const& collisions, auto const& triggers, auto const& assocs)
+  void fillProcessRecoMain(auto const& collisions, auto const& triggers, auto const& assocs)
   {
     for (auto const& collision : collisions) {
       // group collision ++
@@ -1457,6 +1461,8 @@ struct HadronPhotonCorrelation {
           return std::tuple{assocs.sliceBy(perColPipms, collision.globalIndex()), config.nMixingAt0Pipm.value};
         } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
           return std::tuple{assocs.sliceBy(perColPhotonPcms, collision.globalIndex()), config.nMixingAt0PhotonPcm.value};
+        } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
+          return std::tuple{assocs.sliceBy(perColPhotonPcmPairs, collision.globalIndex()), config.nMixingAt0PhotonPcmPair.value};
         } else {
           static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not supported");
         }
@@ -1466,10 +1472,7 @@ struct HadronPhotonCorrelation {
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(),
                                                        collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
-        fillHistMain<HistFillMode::Plain, TruthLevel::Reco, AssocTypeV>(histFillInfo);
-        if constexpr (FillMcRecoInfo) {
-          fillTruthLevelsMcRecoStd<HistFillMode::Plain, AssocTypeV>(histFillInfo, collision, associated);
-        }
+        fillAssocsRecoMain<HistFillMode::Plain, AssocTypeV, FillMcRecoInfo>(histFillInfo, collision, associated);
       };
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
 
@@ -1483,10 +1486,7 @@ struct HadronPhotonCorrelation {
                                          trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
                               getTriggerPtCorrection(trigger.pt());
-        fillHistMain<HistFillMode::Correlation, TruthLevel::Reco, AssocTypeV>(histFillInfo);
-        if constexpr (FillMcRecoInfo) {
-          fillTruthLevelsMcRecoStd<HistFillMode::Correlation, AssocTypeV>(histFillInfo, collision, associated);
-        }
+        fillAssocsRecoMain<HistFillMode::Correlation, AssocTypeV, FillMcRecoInfo>(histFillInfo, collision, associated);
       };
       corrProcessCorrelation(collision, triggersThisEvent, assocsThisEvent, funcCorrelation);
 
@@ -1501,31 +1501,30 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight *
                               getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated) *
                               getTriggerPtCorrection(mixingTrigger.pt());
-        fillHistMain<HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
-        if constexpr (FillMcRecoInfo) {
-          fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
-        }
+        fillAssocsRecoMain<HistFillMode::Mixing, AssocTypeV, FillMcRecoInfo>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
+      corrProcessMixing<TruthLevel::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
     }
   }
 
+  // standard reco ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
   void processRecoHadron(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
-    fillProcessRecoStd<AssocType::Hadron, false>(collisions, triggers, hadrons);
+    fillProcessRecoMain<AssocType::Hadron, false>(collisions, triggers, hadrons);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processRecoHadron, "process standard for associated hardon", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processRecoHadron, "process standard for associated hadron", false);
 
   void processRecoPipm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
-    fillProcessRecoStd<AssocType::Pipm, false>(collisions, triggers, pipms);
+    fillProcessRecoMain<AssocType::Pipm, false>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPipm, "process standard for associated pipm", false);
 
   void processRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                             aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
-    fillProcessRecoStd<AssocType::PhotonPcm, false>(collisions, triggers, photonPcms);
+    fillProcessRecoMain<AssocType::PhotonPcm, false>(collisions, triggers, photonPcms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcm, "process standard for associated photonPcm", false);
 
@@ -1565,70 +1564,14 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  template <bool FillMcRecoInfo>
-  void fillProcesRecoPhotonPcmPair(auto const& collisions, auto const& triggers, auto const& photonPcmPairs)
-  {
-    for (auto const& collision : collisions) {
-      // group collision
-      auto const triggersThisEvent = triggers.sliceBy(perColTriggers, collision.globalIndex());
-      auto const photonPcmPairsThisEvent = photonPcmPairs.sliceBy(perColPhotonPcmPairs, collision.globalIndex());
-
-      auto const funcPlain = [this](auto const& collision, auto const& associated) {
-        HistFillInfoPlainPt histFillInfo = {collision.ptMax(), associated.pt()};
-        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated);
-        fillAssocsRecoPhotonPcmPair<HistFillMode::Plain>(histFillInfo, collision, associated);
-        if constexpr (FillMcRecoInfo) {
-          fillAssocsMcRecoPhotonPcmPair<HistFillMode::Plain>(histFillInfo, collision, associated);
-        }
-      };
-      corrProcessPlain(collision, photonPcmPairsThisEvent, funcPlain);
-
-      auto const funcCorrelation = [this](auto const& collision, auto const& trigger, auto const& associated) {
-        // exclude self correlation
-        if (isRecoSelfTrigger(trigger, associated)) {
-          return;
-        }
-
-        HistFillInfoCorr histFillInfo = {getDeltaPhi(trigger.phi(), associated.phi()), trigger.eta() - associated.eta(),
-                                         trigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
-                              getTriggerPtCorrection(trigger.pt());
-        fillAssocsRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, collision, associated);
-        if constexpr (FillMcRecoInfo) {
-          fillAssocsMcRecoPhotonPcmPair<HistFillMode::Correlation>(histFillInfo, collision, associated);
-        }
-      };
-      corrProcessCorrelation(collision, triggersThisEvent, photonPcmPairsThisEvent, funcCorrelation);
-
-      // select mixing events
-      if (config.doTrigEvMixing.value && !collision.trigEv()) {
-        continue;
-      }
-
-      auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
-        HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
-                                         mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
-        histFillInfo.weight = perTriggerWeight *
-                              getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated) *
-                              getTriggerPtCorrection(mixingTrigger.pt());
-        fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
-        if constexpr (FillMcRecoInfo) {
-          fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
-        }
-      };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
-    }
-  }
-
   void processRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmPairsWithV0> const& photonPcmPairs,
                                 aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
-    fillProcesRecoPhotonPcmPair<false>(collisions, triggers, photonPcmPairs);
+    fillProcessRecoMain<AssocType::PhotonPcmPair, false>(collisions, triggers, photonPcmPairs);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
-  void processPhotonPcmPairMix(soa::Filtered<aod::HpcCollisions> const& collisions, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
-                               aod::V0PhotonsKF const&, aod::V0Legs const&)
+  void processPhotonPcmPairMix(soa::Filtered<aod::HpcCollisions> const& collisions, soa::Filtered<PhotonPcmsWithV0> const& photonPcms)
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
     auto photonPcmsTuple = std::make_tuple(photonPcms);
@@ -1648,7 +1591,7 @@ struct HadronPhotonCorrelation {
           continue;
         }
         // reco assoc selection
-        if (HadronPhotonPcmSelection::getEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF()) > config.energyAsymmPhotonPairMax.value) {
+        if (HadronPhotonPcmSelection::getEnergyAsymDiPhoton(photonPcm1, photonPcm2) > config.energyAsymmPhotonPairMax.value) {
           continue;
         }
 
@@ -1706,6 +1649,43 @@ struct HadronPhotonCorrelation {
       }
     }
     return false;
+  }
+
+  template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
+  void fillPi0EtaMcTrue(auto& histFillInfo, auto const& assocParticle, auto const& isDecaySelfTrig) {
+    // mc-to-data scaling
+    histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocTypeV>(assocParticle.pt());
+
+    if constexpr (TruthLevelV == TruthLevel::True) {
+      fillHistMain<HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocTypeV>(histFillInfo);
+    }
+    // self trigger
+    if constexpr (HistFillModeV == HistFillMode::Plain) {
+      if (isDecaySelfTrig(AssocTypeV)) {
+        return;
+      }
+    } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
+      if (isDecaySelfTrig()) {
+        return;
+      }
+    } else if constexpr (HistFillModeV == HistFillMode::Mixing) {
+    } else {
+      static_assert(AlwaysFalseValue<HistFillModeV>, "histFillMode not found");
+    }
+    fillHistMain<HistFillModeV, TruthLevelV, AssocTypeV>(histFillInfo);
+    // decaying particles extra info
+    if constexpr (TruthLevelV == TruthLevel::TrueRecoEvRecoPtTrig) {
+      // chosen decay
+      if (!isDecayToGG(assocParticle)) {
+        return;
+      }
+      fillHistMain<HistFillModeV, TruthLevel::TrueMeasDecay, AssocTypeV>(histFillInfo);
+      // daughters in acceptance
+      if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
+        return;
+      }
+      fillHistMain<HistFillModeV, TruthLevel::TrueGeoAcc, AssocTypeV>(histFillInfo);
+    }
   }
 
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, typename T_DecaySelfTrigFunc = decltype([]() {})>
@@ -1780,76 +1760,12 @@ struct HadronPhotonCorrelation {
     }
     // pi0
     if (assocParticle.pdgCode() == PDG_t::kPi0) {
-      // mc-to-data scaling
-      histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::Pi0Pcm>(assocParticle.pt());
-
-      if constexpr (TruthLevelV == TruthLevel::True) {
-        fillHistMain<HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::Pi0Pcm>(histFillInfo);
-      }
-      // self trigger
-      if constexpr (HistFillModeV == HistFillMode::Plain) {
-        if (isDecaySelfTrig(AssocType::Pi0Pcm)) {
-          return;
-        }
-      } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
-        if (isDecaySelfTrig()) {
-          return;
-        }
-      } else if constexpr (HistFillModeV == HistFillMode::Mixing) {
-      } else {
-        static_assert(AlwaysFalseValue<HistFillModeV>, "histFillMode not found");
-      }
-      fillHistMain<HistFillModeV, TruthLevelV, AssocType::Pi0Pcm>(histFillInfo);
-      // decaying particles extra info
-      if constexpr (TruthLevelV == TruthLevel::TrueRecoEvRecoPtTrig) {
-        // chosen decay
-        if (!isDecayToGG(assocParticle)) {
-          return;
-        }
-        fillHistMain<HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::Pi0Pcm>(histFillInfo);
-        // daughters in acceptance
-        if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
-          return;
-        }
-        fillHistMain<HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::Pi0Pcm>(histFillInfo);
-      }
+      fillPi0EtaMcTrue<HistFillModeV, TruthLevelV, AssocType::Pi0Pcm>(histFillInfo, assocParticle, isDecaySelfTrig);
       return;
     }
     // eta
     if (assocParticle.pdgCode() == constants::physics::Pdg::kEta) {
-      // mc-to-data scaling
-      histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocType::EtaPcm>(assocParticle.pt());
-
-      if constexpr (TruthLevelV == TruthLevel::True) {
-        fillHistMain<HistFillModeV, TruthLevel::TrueDecaySelfTrig, AssocType::EtaPcm>(histFillInfo);
-      }
-      // self trigger
-      if constexpr (HistFillModeV == HistFillMode::Plain) {
-        if (isDecaySelfTrig(AssocType::EtaPcm)) {
-          return;
-        }
-      } else if constexpr (HistFillModeV == HistFillMode::Correlation) {
-        if (isDecaySelfTrig()) {
-          return;
-        }
-      } else if constexpr (HistFillModeV == HistFillMode::Mixing) {
-      } else {
-        static_assert(AlwaysFalseValue<HistFillModeV>, "histFillMode not found");
-      }
-      fillHistMain<HistFillModeV, TruthLevelV, AssocType::EtaPcm>(histFillInfo);
-      // decaying particles extra info
-      if constexpr (TruthLevelV == TruthLevel::TrueRecoEvRecoPtTrig) {
-        // chosen decay
-        if (!isDecayToGG(assocParticle)) {
-          return;
-        }
-        fillHistMain<HistFillModeV, TruthLevel::TrueMeasDecay, AssocType::EtaPcm>(histFillInfo);
-        // daughters in acceptance
-        if (!checkDaughtersInAcceptance(assocParticle, {-config.absEtaMax.value, config.absEtaMax.value})) {
-          return;
-        }
-        fillHistMain<HistFillModeV, TruthLevel::TrueGeoAcc, AssocType::EtaPcm>(histFillInfo);
-      }
+      fillPi0EtaMcTrue<HistFillModeV, TruthLevelV, AssocType::EtaPcm>(histFillInfo, assocParticle, isDecaySelfTrig);
       return;
     }
 
@@ -1868,15 +1784,30 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processMcTrue(soa::Filtered<HpcMcCollisions> const& mcCollisions, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
-  {
-    for (auto const& mcCollision : mcCollisions) {
+  template <TruthLevel TruthLevelV>
+  void fillProcessMcTrueTrig(auto const& collisions, auto const& trueTriggers, auto const& mcParticles) {
+    for (auto const& collision : collisions) {
+      if constexpr (TruthLevelV == TruthLevel::TrueRecoEv) {
+        if (!isMcMatchedCollision(collision)) {
+          continue;
+        }
+      }
+      auto const& mcCollision = [&]() {
+        if constexpr (TruthLevelV == TruthLevel::True) {
+          return collision;
+        } else if constexpr (TruthLevelV == TruthLevel::TrueRecoEv) {
+          return collision.template jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
+        } else {
+          static_assert(AlwaysFalseValue<TruthLevelV>, "truthLevel not found");
+        }
+      }();
+
       // group collision
       auto const trueTriggersThisEvent = trueTriggers.sliceBy(perColTrueTriggers, mcCollision.globalIndex());
       auto const mcParticlesThisEvent = mcParticles.sliceBy(perColMcParticles, mcCollision.globalIndex());
 
       // self correlation of events (plain)
-      std::map<AssocType, bool> const decaySelfTrigPlainMap = getDecaySelfTrigPlainMap<TruthLevel::True>(trueTriggersThisEvent);
+      std::map<AssocType, bool> const decaySelfTrigPlainMap = getDecaySelfTrigPlainMap<TruthLevelV>(trueTriggersThisEvent);
 
       auto const funcPlain = [this, &decaySelfTrigPlainMap](auto const& mcCollision, auto const& assocParticle) {
         // self trigger info for decaying particles
@@ -1885,7 +1816,7 @@ struct HadronPhotonCorrelation {
         };
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(),
                                                        mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
-        fillAssocsMcTrue<HistFillMode::Plain, TruthLevel::True>(histFillInfo, assocParticle, isDecaySelfTrig);
+        fillAssocsMcTrue<HistFillMode::Plain, TruthLevelV>(histFillInfo, assocParticle, isDecaySelfTrig);
       };
       corrProcessPlain(mcCollision, mcParticlesThisEvent, funcPlain);
 
@@ -1902,7 +1833,7 @@ struct HadronPhotonCorrelation {
 
         HistFillInfoCorr histFillInfo = {getDeltaPhi(trueTrigger.phi(), assocParticle.phi()), trueTrigger.eta() - assocParticle.eta(),
                                          trueTrigger.pt(), assocParticle.pt(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
-        fillAssocsMcTrue<HistFillMode::Correlation, TruthLevel::True>(histFillInfo, assocParticle, isDecaySelfTrig);
+        fillAssocsMcTrue<HistFillMode::Correlation, TruthLevelV>(histFillInfo, assocParticle, isDecaySelfTrig);
       };
       corrProcessCorrelation(mcCollision, trueTriggersThisEvent, mcParticlesThisEvent, funcCorrelation);
 
@@ -1915,73 +1846,23 @@ struct HadronPhotonCorrelation {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), assocParticle.phi()), mixingTrigger.eta() - assocParticle.eta(),
                                          mixingTrigger.pt(), assocParticle.pt(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
         histFillInfo.weight = perTriggerWeight;
-        fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::True>(histFillInfo, assocParticle);
+        fillAssocsMcTrue<HistFillMode::Mixing, TruthLevelV>(histFillInfo, assocParticle);
       };
-      corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
+      corrProcessMixing<TruthLevelV>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
                                                  [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
+  }
+
+  void processMcTrue(soa::Filtered<HpcMcCollisions> const& mcCollisions, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
+  {
+    fillProcessMcTrueTrig<TruthLevel::True>(mcCollisions, trueTriggers, mcParticles);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrue, "process mc-true (all collisions) for multiple associated particles", false);
 
   void processMcTrueRecoEv(soa::Filtered<HpcCollisionsMcD> const& collisions,
                            soa::Filtered<HpcMcCollisions> const&, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
   {
-    for (auto const& collision : collisions) {
-      if (!isMcMatchedCollision(collision)) {
-        continue;
-      }
-
-      auto const& mcCollision = collision.jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
-
-      // group collision
-      auto const trueTriggersThisEvent = trueTriggers.sliceBy(perColTrueTriggers, collision.jetMcCollisionId());
-      auto const mcParticlesThisEvent = mcParticles.sliceBy(perColMcParticles, collision.jetMcCollisionId());
-
-      // self correlation of events (plain)
-      std::map<AssocType, bool> const decaySelfTrigPlainMap = getDecaySelfTrigPlainMap<TruthLevel::TrueRecoEv>(trueTriggersThisEvent);
-
-      auto const funcPlain = [this, &decaySelfTrigPlainMap](auto const& mcCollision, auto const& assocParticle) {
-        // self trigger info for decaying particles
-        auto const isDecaySelfTrig = [&decaySelfTrigPlainMap](AssocType const assocType) {
-          return decaySelfTrigPlainMap.at(assocType);
-        };
-        HistFillInfoPlainPhiEtaZPvMult histFillInfo = {mcCollision.ptMax(), assocParticle.pt(), assocParticle.phi(), assocParticle.eta(),
-                                                       mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
-        fillAssocsMcTrue<HistFillMode::Plain, TruthLevel::TrueRecoEv>(histFillInfo, assocParticle, isDecaySelfTrig);
-      };
-      corrProcessPlain(mcCollision, mcParticlesThisEvent, funcPlain);
-
-      auto const funcCorrelation = [this](auto const& mcCollision, auto const& trueTrigger, auto const& assocParticle) {
-        auto const& triggerParticle = trueTrigger.jetMcParticle();
-        // self trigger info for decaying particles
-        auto const isDecaySelfTrig = [this, &assocParticle, &triggerParticle]() {
-          return producesTrigger(assocParticle, triggerParticle);
-        };
-        // exclude self correlation
-        if (trueTrigger.jetMcParticleId() == assocParticle.globalIndex()) {
-          return;
-        }
-
-        HistFillInfoCorr histFillInfo = {getDeltaPhi(trueTrigger.phi(), assocParticle.phi()), trueTrigger.eta() - assocParticle.eta(),
-                                         trueTrigger.pt(), assocParticle.pt(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
-        fillAssocsMcTrue<HistFillMode::Correlation, TruthLevel::TrueRecoEv>(histFillInfo, assocParticle, isDecaySelfTrig);
-      };
-      corrProcessCorrelation(mcCollision, trueTriggersThisEvent, mcParticlesThisEvent, funcCorrelation);
-
-      // select mixing events
-      if (config.doTrigEvMixing.value && !mcCollision.trigEv()) {
-        continue;
-      }
-
-      auto const funcMixing = [this](auto const& mcCollision, auto const& mixingTrigger, auto const& assocParticle, auto const perTriggerWeight) {
-        HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), assocParticle.phi()), mixingTrigger.eta() - assocParticle.eta(),
-                                         mixingTrigger.pt(), assocParticle.pt(), mcCollision.posZ(), static_cast<double>(mcCollision.nChargedInEtaRange())};
-        histFillInfo.weight = perTriggerWeight;
-        fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEv>(histFillInfo, assocParticle);
-      };
-      corrProcessMixing<TriggerMemoryMode::TrueRecoEv>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                       [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
-    }
+    fillProcessMcTrueTrig<TruthLevel::TrueRecoEv>(collisions, trueTriggers, mcParticles);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
 
@@ -2052,7 +1933,7 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
-      corrProcessMixing<TriggerMemoryMode::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
+      corrProcessMixing<TruthLevel::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
                                                                  [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
@@ -2087,20 +1968,20 @@ struct HadronPhotonCorrelation {
 
   void processMcRecoHadron(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, aod::HpcHadrons const& hadrons)
   {
-    fillProcessRecoStd<AssocType::Hadron, true>(collisions, triggers, hadrons);
+    fillProcessRecoMain<AssocType::Hadron, true>(collisions, triggers, hadrons);
   }
-  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoHadron, "process standard for associated hardon with additional mc information", false);
+  PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoHadron, "process standard for associated hadron with additional mc information", false);
 
   void processMcRecoPipm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, aod::HpcPipms const& pipms)
   {
-    fillProcessRecoStd<AssocType::Pipm, true>(collisions, triggers, pipms);
+    fillProcessRecoMain<AssocType::Pipm, true>(collisions, triggers, pipms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPipm, "process standard for associated pipm with additional mc information", false);
 
   void processMcRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
-    fillProcessRecoStd<AssocType::PhotonPcm, true>(collisions, triggers, photonPcms);
+    fillProcessRecoMain<AssocType::PhotonPcm, true>(collisions, triggers, photonPcms);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPhotonPcm, "process standard for associated photonPcm with additional mc information", false);
 
@@ -2173,7 +2054,7 @@ struct HadronPhotonCorrelation {
   void processMcRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmPairsWithV0> const& photonPcmPairs,
                                   aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
-    fillProcesRecoPhotonPcmPair<true>(collisions, triggers, photonPcmPairs);
+    fillProcessRecoMain<AssocType::PhotonPcmPair, true>(collisions, triggers, photonPcmPairs);
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPhotonPcmPair, "process correlation for associated photonPcmPair with additional mc information", false);
 

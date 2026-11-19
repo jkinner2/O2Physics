@@ -160,6 +160,19 @@ struct HadronPhotonProducer {
     return std::tuple(posTrack, negTrack);
   }
 
+  template <typename T>
+  std::vector<int> getIntersectTriggerIds(std::initializer_list<T> const& tracks) {
+    std::vector<int> intersectTriggerIds;
+
+    for (auto const& track : tracks) {
+      auto const triggerTrackIt = trackToTriggerMap.find(track.globalIndex());
+      if (triggerTrackIt != trackToTriggerMap.end()) {
+        intersectTriggerIds.push_back(triggerTrackIt->second);
+      }
+    }
+    return intersectTriggerIds;
+  }
+
   // selections ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // reco only --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -193,6 +206,17 @@ struct HadronPhotonProducer {
     }
     return true;
   }
+
+  // checks v0Photon eta and dcaZ
+  bool checkPhotonEtaDcaZ(auto const& v0Photon) {
+    if (std::abs(v0Photon.eta()) > absEtaMax) {
+      return false;
+    }
+    if (std::abs(v0Photon.dcaZtopv()) < pcmAbsDcaZLim.value[0] || std::abs(v0Photon.dcaZtopv()) > pcmAbsDcaZLim.value[1]) {
+      return false;
+    }
+    return true;
+  };
 
   // checks pipm selection (just pid (no additional track cuts)
   bool checkPipmTPCTOF(auto const& track)
@@ -624,18 +648,13 @@ struct HadronPhotonProducer {
 
       // hadron/pipm
       for (auto const& track : tracksThisEvent) {
-        std::vector<int> intersectTriggerIds;
-
         // track selection
         if (!checkTrackCuts(track)) {
           continue;
         }
 
         // get possible overlap with triggers
-        auto const triggerTrackIt = trackToTriggerMap.find(track.globalIndex());
-        if (triggerTrackIt != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerTrackIt->second);
-        }
+        std::vector<int> const intersectTriggerIds = getIntersectTriggerIds({track});
 
         // mc reco info
         TruthLevelInfo const truthLevelInfoHadron = [&] {
@@ -727,20 +746,8 @@ struct HadronPhotonProducer {
       // photonsPcm (for some reason collisionId not an index column (?))
       auto const v0PhotonsThisEvent = v0Photons.sliceBy(perColV0Photons, collision.collisionId());
 
-      auto const checkPhotonEtaDcaZ = [this](auto const& v0Photon) {
-        if (std::abs(v0Photon.eta()) > absEtaMax) {
-          return false;
-        }
-        if (std::abs(v0Photon.dcaZtopv()) < pcmAbsDcaZLim.value[0] || std::abs(v0Photon.dcaZtopv()) > pcmAbsDcaZLim.value[1]) {
-          return false;
-        }
-        return true;
-      };
-
       // photonPcm
       for (auto const& v0Photon : v0PhotonsThisEvent) {
-        std::vector<int> intersectTriggerIds;
-
         // photon selection
         if (!checkPhotonEtaDcaZ(v0Photon)) {
           continue;
@@ -750,14 +757,7 @@ struct HadronPhotonProducer {
         auto const [posTrack, negTrack] = getV0LegJetTracks(v0Photon, tracks);
 
         // get possible overlap with triggers
-        auto const triggerPosTrackIt = trackToTriggerMap.find(posTrack.globalIndex());
-        if (triggerPosTrackIt != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerPosTrackIt->second);
-        }
-        auto const triggerNegTrackIt = trackToTriggerMap.find(negTrack.globalIndex());
-        if (triggerNegTrackIt != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerNegTrackIt->second);
-        }
+        std::vector<int> const intersectTriggerIds = getIntersectTriggerIds({posTrack, negTrack});
 
         // mc reco info
         auto const [truthLevelInfoPhotonPcm, impurityInfoPhotonPcm] = [&] {
@@ -780,8 +780,6 @@ struct HadronPhotonProducer {
 
       // photonPcmPair
       for (auto const& [v0Photon1, v0Photon2] : soa::combinations(soa::CombinationsStrictlyUpperIndexPolicy(v0PhotonsThisEvent, v0PhotonsThisEvent))) {
-        std::vector<int> intersectTriggerIds;
-
         // get kinematics
         ROOT::Math::PtEtaPhiMVector const p4V0Pcm1(v0Photon1.pt(), v0Photon1.eta(), v0Photon1.phi(), 0.);
         ROOT::Math::PtEtaPhiMVector const p4V0Pcm2(v0Photon2.pt(), v0Photon2.eta(), v0Photon2.phi(), 0.);
@@ -800,22 +798,7 @@ struct HadronPhotonProducer {
         auto const [posTrack2, negTrack2] = getV0LegJetTracks(v0Photon2, tracks);
 
         // get possible overlap with triggers
-        auto const triggerPosTrack1It = trackToTriggerMap.find(posTrack1.globalIndex());
-        if (triggerPosTrack1It != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerPosTrack1It->second);
-        }
-        auto const triggerNegTrack1It = trackToTriggerMap.find(negTrack1.globalIndex());
-        if (triggerNegTrack1It != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerNegTrack1It->second);
-        }
-        auto const triggerPosTrack2It = trackToTriggerMap.find(posTrack2.globalIndex());
-        if (triggerPosTrack2It != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerPosTrack2It->second);
-        }
-        auto const triggerNegTrack2It = trackToTriggerMap.find(negTrack2.globalIndex());
-        if (triggerNegTrack2It != trackToTriggerMap.end()) {
-          intersectTriggerIds.push_back(triggerNegTrack2It->second);
-        }
+        std::vector<int> const intersectTriggerIds = getIntersectTriggerIds({posTrack1, negTrack1, posTrack2, negTrack2});
 
         // mc reco info
         auto const [truthLevelInfoPi0Pcm, photonImpurityInfoPi0Pcm] = [&] {
