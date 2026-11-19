@@ -1379,8 +1379,8 @@ struct HadronPhotonCorrelation {
       }
     }
 
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMinEtaV0", cfgMinEtaV0Selection, false) ||
-        !common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMaxEtaV0", cfgMaxEtaV0Selection, false)) {
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMinEtaV0", cfgMinEtaV0Selection, false) ||
+        common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMaxEtaV0", cfgMaxEtaV0Selection, false)) {
       if (config.absEtaMax.value > std::abs(cfgMinEtaV0Selection) || config.absEtaMax.value > std::abs(cfgMaxEtaV0Selection)) {
         throw std::runtime_error("absEtaMax does not constrain v0 cut");
       }

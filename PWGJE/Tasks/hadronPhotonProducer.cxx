@@ -528,7 +528,7 @@ struct HadronPhotonProducer {
       auto const tracksThisEvent = tracks.sliceBy(perColTracks, collision.globalIndex());
 
       // mc split event selection n
-      // default -1 for data reconstruction
+      // default 1 for data reconstruction
       int nSelectSplitMcEv = 1;
       if constexpr (IsCollisionMCD<decltype(collision)>) {
         nSelectSplitMcEv = getThirdFourthDecimalTruePosZ(collision) % nTimesSplitMcEv.value + 1;
