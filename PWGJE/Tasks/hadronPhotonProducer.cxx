@@ -486,7 +486,8 @@ struct HadronPhotonProducer {
       throw std::runtime_error("invalid doprocess-collisionTrigger config");
     }
     if (static_cast<int>(doprocessRecoHadronPipmTPCTOF) + static_cast<int>(doprocessMcRecoHadronPipmTPCTOF) +
-        static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) > 1) {
+          static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) >
+        1) {
       throw std::runtime_error("invalid doprocess-hadronPipm config");
     }
     if (static_cast<int>(doprocessRecoPhotonPcm) + static_cast<int>(doprocessMcRecoPhotonPcm) > 1) {

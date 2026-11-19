@@ -172,7 +172,8 @@ struct HadronPhotonPcmSelection {
     return fV0PhotonCut.template IsSelected<V0PhotonNoEvent<V0PhotonType>, aod::V0Legs>(V0PhotonNoEvent<V0PhotonType>{v0Photon});
   }
 
-  void init(InitContext&) {
+  void init(InitContext&)
+  {
     initV0PhotonCut();
   }
 
@@ -1355,8 +1356,7 @@ struct HadronPhotonCorrelation {
 
     // analysis info
     int64_t const noLaterThanCcdb =
-      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() :
-                                                 config.noLaterThanCcdbConfig.value;
+      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : config.noLaterThanCcdbConfig.value;
     ccdb->setURL(config.urlCcdb.value);
     // enabling object caching (otherwise each call goes to CCDB server)
     ccdb->setCaching(true);
@@ -1408,9 +1408,9 @@ struct HadronPhotonCorrelation {
     triggerMemoryTrue = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
                                                               config.nTriggerSavedForMixing.value);
     triggerMemoryTrueRecoEv = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
-                                                                     config.nTriggerSavedForMixing.value);
+                                                                    config.nTriggerSavedForMixing.value);
     triggerMemoryTrueRecoEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
-                                                                               config.nTriggerSavedForMixing.value);
+                                                                              config.nTriggerSavedForMixing.value);
   }
 
   // reco only ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1639,7 +1639,8 @@ struct HadronPhotonCorrelation {
 
   // mc true++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  bool fillMcTrueBasicCondition(auto const& assocParticle) {
+  bool fillMcTrueBasicCondition(auto const& assocParticle)
+  {
     if (std::abs(assocParticle.eta()) > config.absEtaMax.value) {
       return false;
     }
@@ -1873,7 +1874,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::True>(histFillInfo, assocParticle);
       };
       corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                 [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
+                                                 [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrue, "process mc-true (all collisions) for multiple associated particles", false);
@@ -1935,13 +1936,13 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEv>(histFillInfo, assocParticle);
       };
       corrProcessMixing<TriggerMemoryMode::TrueRecoEv>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                       [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
+                                                       [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
 
   void processMcTrueRecoEvRecoPtTrig(soa::Filtered<HpcCollisionsMcD> const& collisions, soa::Join<aod::HpcTriggers, aod::HpcTriggerTrackIds> const& triggers, aod::JetTracksMCD const&,
-                                      soa::Filtered<HpcMcCollisions> const&, aod::JetParticles const& mcParticles)
+                                     soa::Filtered<HpcMcCollisions> const&, aod::JetParticles const& mcParticles)
   {
     for (auto const& collision : collisions) {
       if (!isMcMatchedCollision(collision)) {
@@ -2008,7 +2009,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
       corrProcessMixing<TriggerMemoryMode::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                                 [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
+                                                                 [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
