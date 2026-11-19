@@ -735,7 +735,7 @@ struct HadronPhotonProducer {
           return false;
         }
         return true;
-      }
+      };
 
       // photonPcm
       for (auto const& v0Photon : v0PhotonsThisEvent) {

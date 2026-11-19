@@ -1648,7 +1648,7 @@ struct HadronPhotonCorrelation {
           continue;
         }
         // reco assoc selection
-        if (getEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF()) > config.energyAsymmPhotonPairMax.value) {
+        if (HadronPhotonPcmSelection::getEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF()) > config.energyAsymmPhotonPairMax.value) {
           continue;
         }
 
