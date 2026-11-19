@@ -286,7 +286,7 @@ struct HadronPhotonCorrelation {
   // O2 varables ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   // filters
-  Filter filterEvTotal = aod::hpc_common::selEv == true && aod::hpc_common::nSelectSplitMcEv == config.nSelectSplitMcEv;
+  expressions::Filter filterEvTotal = aod::hpc_common::selEv == true && aod::hpc_common::nSelectSplitMcEv == config.nSelectSplitMcEv;
 
   // partitions
   SliceCache cache;
@@ -1355,7 +1355,8 @@ struct HadronPhotonCorrelation {
 
     // analysis info
     int64_t const noLaterThanCcdb =
-      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : config.noLaterThanCcdbConfig.value;
+      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() :
+                                                 config.noLaterThanCcdbConfig.value;
     ccdb->setURL(config.urlCcdb.value);
     // enabling object caching (otherwise each call goes to CCDB server)
     ccdb->setCaching(true);
@@ -1687,13 +1688,13 @@ struct HadronPhotonCorrelation {
     }
     if (isDecayPrimary(assocParticle)) {
       switch (assocParticle.pdgCode()) {
-        case PDG_t::kPi0;
+        case PDG_t::kPi0:
           return true;
-        case constants::physics::Pdg::kEta;
+        case constants::physics::Pdg::kEta:
           return true;
-        case constants::physics::Pdg::kOmega;
+        case constants::physics::Pdg::kOmega:
           return true;
-        case constants::physics::Pdg::kEtaPrime;
+        case constants::physics::Pdg::kEtaPrime:
           return true;
         default:
           return false;
@@ -1911,12 +1912,14 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::True>(histFillInfo, assocParticle);
       };
-      corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value, fillMcTrueBasicCondition);
+      corrProcessMixing<TriggerMemoryMode::True>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
+                                                 [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrue, "process mc-true (all collisions) for multiple associated particles", false);
 
-  void processMcTrueRecoEv(soa::Filtered<HpcCollisionsMcD> const& collisions, soa::Filtered<HpcMcCollisions> const&, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
+  void processMcTrueRecoEv(soa::Filtered<HpcCollisionsMcD> const& collisions,
+                           soa::Filtered<HpcMcCollisions> const&, aod::HpcTrueTriggers const& trueTriggers, aod::JetParticles const& mcParticles)
   {
     for (auto const& collision : collisions) {
       if (!isMcMatchedCollision(collision)) {
@@ -1971,7 +1974,8 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEv>(histFillInfo, assocParticle);
       };
-      corrProcessMixing<TriggerMemoryMode::TrueRecoEv>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value, fillMcTrueBasicCondition);
+      corrProcessMixing<TriggerMemoryMode::TrueRecoEv>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
+                                                       [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEv, "process mc-true (reco collisions) correlation for multiple associated particles", false);
@@ -2043,7 +2047,8 @@ struct HadronPhotonCorrelation {
         histFillInfo.weight = perTriggerWeight;
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
-      corrProcessMixing<TriggerMemoryMode::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value, fillMcTrueBasicCondition);
+      corrProcessMixing<TriggerMemoryMode::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
+                                                                 [this](auto const& assocParticle){return fillMcTrueBasicCondition(assocParticle);});
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);
@@ -2337,7 +2342,7 @@ struct HadronPhotonCorrelation {
   // last /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processRecoLast(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers)
+  void processRecoLast(aod::HpcCollisions const& collisions, aod::HpcTriggers const& triggers)
   {
     // do at end of each data frame (after other reco correlation process functions)
     // (PROCESS_SWITCH of this process has to be declared last)
@@ -2347,7 +2352,7 @@ struct HadronPhotonCorrelation {
       histos.fill(HIST("reco/info/h1_nEvents"), 0.5);
 
       // mc split
-      if (!checkSplitMcEventSelection(collision)) {
+      if (collision.nSelectSplitMcEv() != config.nSelectSplitMcEv.value) {
         continue;
       }
       histos.fill(HIST("reco/info/h1_nEvents"), 1.5);
