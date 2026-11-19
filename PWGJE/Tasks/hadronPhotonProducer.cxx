@@ -98,6 +98,7 @@ struct HadronPhotonProducer {
   Configurable<std::string> rctLabel{"rctLabel", "CBT_hadronPID", "RCT selection label"};
   Configurable<std::string> trackSelections{"trackSelections", "globalTracks", "JE framework - track selections"};
   Configurable<std::string> triggerMasks{"triggerMasks", "", "JE framework - skimmed data trigger masks (relevent for correlation: fTrackLowPt,fTrackHighPt)"};
+  Configurable<int> nTimesSplitMcEv{"nTimesSplitMcEv", 1, "number of event fractions for selection in MC (as modulo from {0,1,...,99}) | (select 1 for data)"};
 
   Configurable<double> absEtaMax{"absEtaMax", 0.8, "maximum absEta cut"};
   Configurable<double> ptTrigMin{"ptTrigMin", 5, "minimum pt of triggers"};
@@ -448,9 +449,9 @@ struct HadronPhotonProducer {
 
   // other ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // mc split event selection based in the thrid decimal of mc-true posZ
+  // mc split event selection based in the thrid and fourth decimal of mc-true posZ
   // returns reco value in case of no mc match
-  int getThirdDecimalTruePosZ(auto const& collision)
+  int getThirdFourthDecimalTruePosZ(auto const& collision)
   {
     double absPosZ;
 
@@ -466,9 +467,9 @@ struct HadronPhotonProducer {
     } else {
       static_assert(AlwaysFalseType<decltype(collision)>, "collision type not allowed");
     }
-    int const thirdDecimalPosZ = static_cast<int>(1000 * absPosZ) % 10;
+    int const thirdFourthDecimalPosZ = static_cast<int>(10000 * absPosZ) % 100;
 
-    return thirdDecimalPosZ;
+    return thirdFourthDecimalPosZ;
   }
 
   // analysis /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -525,11 +526,11 @@ struct HadronPhotonProducer {
       // group collision
       auto const tracksThisEvent = tracks.sliceBy(perColTracks, collision.globalIndex());
 
-      // mc split event selection
+      // mc split event selection n
       // default -1 for data reconstruction
-      int thirdDecimalTruePosZ = -1;
+      int nSelectSplitMcEv = -1;
       if constexpr (IsCollisionMCD<decltype(collision)>) {
-        thirdDecimalTruePosZ = getThirdDecimalTruePosZ(collision);
+        nSelectSplitMcEv = getThirdFourthDecimalTruePosZ(collision) % nTimesSplitMcEv.value + 1;
       }
       // maximum track pt
       float maxTrackPt = -1;
@@ -585,7 +586,7 @@ struct HadronPhotonProducer {
       // collision info
       histos.fill(HIST("reco/h2_zPvMult"), collision.posZ(), nGlobalTracks);
       histos.fill(HIST("reco/h1_hadronicRate"), collision.hadronicRate());
-      tableProduction.collision(isSelectedEvent, thirdDecimalTruePosZ, isTriggerEvent, maxTrackPt, collision.posZ(), nGlobalTracks);
+      tableProduction.collision(isSelectedEvent, nSelectSplitMcEv, isTriggerEvent, maxTrackPt, collision.posZ(), nGlobalTracks);
       tableProduction.collisionId(collision.globalIndex());
       // mc true collsion label
       if constexpr (IsCollisionMCD<decltype(collision)>) {
@@ -860,7 +861,7 @@ struct HadronPhotonProducer {
       auto const mcParticlesThisEvent = mcParticles.sliceBy(perColMcParticles, mcCollision.globalIndex());
 
       // mc split event selection
-      int const thirdDecimalTruePosZ = getThirdDecimalTruePosZ(mcCollision);
+      int const nSelectSplitMcEv = getThirdFourthDecimalTruePosZ(mcCollision) % nTimesSplitMcEv.value + 1;
       // maximum charged particle pt
       float maxChargedPt = -1;
       int maxTriggerCollisionId = -1;
@@ -915,7 +916,7 @@ struct HadronPhotonProducer {
 
       // collision info
       histos.fill(HIST("true/h2_zPvMult"), mcCollision.posZ(), nCharged);
-      tableProduction.mcCollisionExtraCorr(isSelectedEvent, thirdDecimalTruePosZ, isTriggerEvent, maxChargedPt, nCharged);
+      tableProduction.mcCollisionExtraCorr(isSelectedEvent, nSelectSplitMcEv, isTriggerEvent, maxChargedPt, nCharged);
     }
   }
   PROCESS_SWITCH(HadronPhotonProducer, processMcCorrTables, "process table production (mc)", false);

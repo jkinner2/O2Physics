@@ -122,6 +122,7 @@ namespace hpc_common
 {
 DECLARE_SOA_INDEX_COLUMN_FULL(JetMcCollision, jetMcCollision, int, JMcCollisions, "");
 DECLARE_SOA_COLUMN(SelEv, selEv, bool);
+DECLARE_SOA_COLUMN(NSelectSplitMcEv, nSelectSplitMcEv, int);
 DECLARE_SOA_COLUMN(Pt, pt, float);
 DECLARE_SOA_COLUMN(PtTruePure, ptTruePure, float);
 DECLARE_SOA_COLUMN(PtTrueOrigin, ptTrueOrigin, float); // and the blind forest
@@ -136,7 +137,6 @@ namespace hpc_collision
 {
 // plain jet collision column for derived data
 DECLARE_SOA_COLUMN(JetCollisionId, jetCollisionId, int);
-DECLARE_SOA_COLUMN(ThirdDecimalTruePosZ, thirdDecimalTruePosZ, int);
 DECLARE_SOA_COLUMN(TrigEv, trigEv, bool);
 DECLARE_SOA_COLUMN(PtMax, ptMax, float);
 DECLARE_SOA_COLUMN(PosZ, posZ, float);
@@ -144,7 +144,7 @@ DECLARE_SOA_COLUMN(NGlobalTracks, nGlobalTracks, int);
 } // namespace hpc_collision
 DECLARE_SOA_TABLE(HpcCollisions, "AOD", "HPCCOL",
                   o2::soa::Index<>,
-                  hpc_common::SelEv, hpc_collision::ThirdDecimalTruePosZ, hpc_collision::TrigEv, hpc_collision::PtMax, hpc_collision::PosZ, hpc_collision::NGlobalTracks);
+                  hpc_common::SelEv, hpc_common::NSelectSplitMcEv, hpc_collision::TrigEv, hpc_collision::PtMax, hpc_collision::PosZ, hpc_collision::NGlobalTracks);
 DECLARE_SOA_TABLE(HpcCollisionIds, "AOD", "HPCCOLID",
                   hpc_collision::JetCollisionId);
 DECLARE_SOA_TABLE(HpcCollisionMcIds, "AOD", "HPCCOLMCID",
@@ -247,13 +247,12 @@ DECLARE_SOA_TABLE(HpcPhotonPcmPairV0PhotonIds, "AOD", "HPCPCMPAIRV0ID",
 // mcCollision extension
 namespace hpc_mc_collision_extra
 {
-DECLARE_SOA_COLUMN(ThirdDecimalTruePosZ, thirdDecimalTruePosZ, int);
 DECLARE_SOA_COLUMN(TrigEv, trigEv, bool);
 DECLARE_SOA_COLUMN(PtMax, ptMax, float);
 DECLARE_SOA_COLUMN(NChargedInEtaRange, nChargedInEtaRange, int);
 } // namespace hpc_mc_collision_extra
 DECLARE_SOA_TABLE(HpcMcCollisionsExtra, "AOD", "HPCMCCOLEXTRA",
-                  hpc_common::SelEv, hpc_mc_collision_extra::ThirdDecimalTruePosZ, hpc_mc_collision_extra::TrigEv, hpc_mc_collision_extra::PtMax, hpc_mc_collision_extra::NChargedInEtaRange);
+                  hpc_common::SelEv, hpc_common::NSelectSplitMcEv, hpc_mc_collision_extra::TrigEv, hpc_mc_collision_extra::PtMax, hpc_mc_collision_extra::NChargedInEtaRange);
 
 // trigger
 namespace hpc_true_trigger
