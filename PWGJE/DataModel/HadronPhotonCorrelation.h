@@ -242,6 +242,19 @@ DECLARE_SOA_TABLE(HpcPhotonPcmPairTrackIds, "AOD", "HPCPCMPAIRTRID",
 DECLARE_SOA_TABLE(HpcPhotonPcmPairV0PhotonIds, "AOD", "HPCPCMPAIRV0ID",
                   hpc_photon_pcm_pair::V0PhotonKF1Id, hpc_photon_pcm_pair::V0PhotonKF2Id);
 
+// photon selection
+namespace hpc_photon_pcm {
+DECLARE_SOA_COLUMN(SelPhotonPcm, selPhotonPcm, bool);
+} // namespace hpc_photon_pcm
+DECLARE_SOA_TABLE(HpcPhotonPcmSels, "AOD", "HPCPHPCMSEL",
+                  hpc_photon_pcm::SelPhotonPcm);
+namespace hpc_photon_pcm_pair {
+DECLARE_SOA_COLUMN(SelPhotons, selPhotons, bool);
+DECLARE_SOA_COLUMN(EnergyAsym, energyAsym, float);
+} // namespace hpc_photon_pcm_pair
+DECLARE_SOA_TABLE(HpcPhotonPcmPairSels, "AOD", "HPCPCMPAIRSEL",
+                  hpc_photon_pcm_pair::SelPhotons, hpc_photon_pcm_pair::EnergyAsym);
+
 // mc
 
 // mcCollision extension

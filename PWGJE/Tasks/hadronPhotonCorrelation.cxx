@@ -82,10 +82,117 @@ using namespace hpc;
 using HpcCollisionsMcD = soa::Join<aod::HpcCollisions, aod::HpcCollisionMcIds>;
 using HpcMcCollisions = soa::Join<aod::JetMcCollisions, aod::HpcMcCollisionsExtra>;
 
-using PhotonPcmsWithV0 = soa::Join<aod::HpcPhotonPcms, aod::HpcPhotonPcmV0PhotonIds>;
-using PhotonPcmPairsWithV0 = soa::Join<aod::HpcPhotonPcmPairs, aod::HpcPhotonPcmPairV0PhotonIds>;
+using PhotonPcmsWithV0 = soa::Join<aod::HpcPhotonPcms, aod::HpcPhotonPcmV0PhotonIds, aod::HpcPhotonPcmSels>;
+using PhotonPcmPairsWithV0 = soa::Join<aod::HpcPhotonPcmPairs, aod::HpcPhotonPcmPairV0PhotonIds, aod::HpcPhotonPcmPairSels>;
 
 using BinningZPvMult = ColumnBinningPolicy<aod::hpc_collision::PosZ, aod::hpc_collision::NGlobalTracks>;
+
+// photon cut selection ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/
+
+struct HadronPhotonPcmSelection {
+  Produces<aod::HpcPhotonPcmSels> photonPcmSel;
+  Produces<aod::HpcPhotonPcmPairSels> photonPcmPairSel;
+
+  // pcm cuts
+  struct : o2::framework::ConfigurableGroup {
+    std::string prefix = "pcmcut_group";
+    o2::framework::Configurable<bool> cfgRequireV0WithItstpc{"cfgRequireV0WithItstpc", false, "flag to select V0s with ITS-TPC matched tracks"};
+    o2::framework::Configurable<bool> cfgRequireV0WithItsonly{"cfgRequireV0WithItsonly", false, "flag to select V0s with ITSonly tracks"};
+    o2::framework::Configurable<bool> cfgRequireV0WithTpconly{"cfgRequireV0WithTpconly", false, "flag to select V0s with TPConly tracks"};
+    o2::framework::Configurable<float> cfgMinPtV0{"cfgMinPtV0", 0.1, "min pt for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMaxPtV0{"cfgMaxPtV0", 1e+10, "max pt for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMinEtaV0{"cfgMinEtaV0", -1e+10, "min eta for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMaxEtaV0{"cfgMaxEtaV0", 1e+10, "max eta for v0 photons at PV"};
+    o2::framework::Configurable<float> cfgMinV0radius{"cfgMinV0radius", 4.0, "min v0 radius"};
+    o2::framework::Configurable<float> cfgMaxV0radius{"cfgMaxV0radius", 90.0, "max v0 radius"};
+    o2::framework::Configurable<float> cfgMidLV0radius{"cfgMidLV0radius", -1.0, "middle low v0 radius for rejection if >0"};
+    o2::framework::Configurable<float> cfgMidHV0radius{"cfgMidHV0radius", -1.0, "middle high v0 radius for rejection if >0"};
+    o2::framework::Configurable<float> cfgMaxAlphaAp{"cfgMaxAlphaAp", 0.95, "max alpha for AP cut"};
+    o2::framework::Configurable<float> cfgMaxQtAp{"cfgMaxQtAp", 0.01, "max qT for AP cut"};
+    o2::framework::Configurable<float> cfgMinCospa{"cfgMinCospa", 0.999, "min V0 CosPA"};
+    o2::framework::Configurable<float> cfgMaxPca{"cfgMaxPca", 1.5, "max distance btween 2 legs"};
+    o2::framework::Configurable<float> cfgMaxChi2kf{"cfgMaxChi2kf", 1e+10, "max chi2/ndf with KF"};
+    o2::framework::Configurable<bool> cfgRejectV0OnItsib{"cfgRejectV0OnItsib", true, "flag to reject V0s on ITSib"};
+
+    o2::framework::Configurable<int> cfgMinNclusterTpc{"cfgMinNclusterTpc", 0, "min ncluster tpc"};
+    o2::framework::Configurable<int> cfgMinNcrossedrows{"cfgMinNcrossedrows", 40, "min ncrossed rows"};
+    o2::framework::Configurable<float> cfgMaxFracSharedClustersTpc{"cfgMaxFracSharedClustersTpc", 999.f, "max fraction of shared clusters in TPC"};
+    o2::framework::Configurable<float> cfgMaxChi2tpc{"cfgMaxChi2tpc", 4.0, "max chi2/NclsTPC"};
+    o2::framework::Configurable<float> cfgMaxChi2its{"cfgMaxChi2its", 36.0, "max chi2/NclsITS"};
+    o2::framework::Configurable<float> cfgMinTPCNsigmaEl{"cfgMinTPCNsigmaEl", -3.0, "min. TPC n sigma for electron"};
+    o2::framework::Configurable<float> cfgMaxTPCNsigmaEl{"cfgMaxTPCNsigmaEl", +3.0, "max. TPC n sigma for electron"};
+    o2::framework::Configurable<bool> cfgDisableItsonlyTrack{"cfgDisableItsonlyTrack", false, "flag to disable ITSonly tracks"};
+    o2::framework::Configurable<bool> cfgDisableTpconlyTrack{"cfgDisableTpconlyTrack", false, "flag to disable TPConly tracks"};
+  } configPcmCuts;
+
+  // pcm cut class
+  V0PhotonCut fV0PhotonCut;
+
+  void initV0PhotonCut()
+  {
+    fV0PhotonCut = V0PhotonCut("fV0PhotonCut", "fV0PhotonCut");
+
+    // for v0
+    fV0PhotonCut.SetV0PtRange(configPcmCuts.cfgMinPtV0, configPcmCuts.cfgMaxPtV0);
+    fV0PhotonCut.SetV0EtaRange(configPcmCuts.cfgMinEtaV0, configPcmCuts.cfgMaxEtaV0);
+    fV0PhotonCut.SetMinCosPA(configPcmCuts.cfgMinCospa);
+    fV0PhotonCut.SetMaxPCA(configPcmCuts.cfgMaxPca);
+    fV0PhotonCut.SetMaxChi2KF(configPcmCuts.cfgMaxChi2kf);
+    fV0PhotonCut.SetRxyRange(configPcmCuts.cfgMinV0radius, configPcmCuts.cfgMaxV0radius, configPcmCuts.cfgMidLV0radius, configPcmCuts.cfgMidHV0radius);
+    fV0PhotonCut.SetAPRange(configPcmCuts.cfgMaxAlphaAp, configPcmCuts.cfgMaxQtAp);
+    fV0PhotonCut.RejectITSib(configPcmCuts.cfgRejectV0OnItsib);
+
+    // for leg
+    fV0PhotonCut.SetMinNClustersTPC(configPcmCuts.cfgMinNclusterTpc);
+    fV0PhotonCut.SetMinNCrossedRowsTPC(configPcmCuts.cfgMinNcrossedrows);
+    fV0PhotonCut.SetMinNCrossedRowsOverFindableClustersTPC(0.8);
+    fV0PhotonCut.SetMaxFracSharedClustersTPC(configPcmCuts.cfgMaxFracSharedClustersTpc);
+    fV0PhotonCut.SetChi2PerClusterTPC(0.0, configPcmCuts.cfgMaxChi2tpc);
+    fV0PhotonCut.SetTPCNsigmaElRange(configPcmCuts.cfgMinTPCNsigmaEl, configPcmCuts.cfgMaxTPCNsigmaEl);
+    fV0PhotonCut.SetChi2PerClusterITS(-1e+10, configPcmCuts.cfgMaxChi2its);
+    fV0PhotonCut.SetNClustersITS(0, 7);
+    fV0PhotonCut.SetMeanClusterSizeITSob(0.0, 16.0);
+    fV0PhotonCut.SetDisableITSonly(configPcmCuts.cfgDisableItsonlyTrack);
+    fV0PhotonCut.SetDisableTPConly(configPcmCuts.cfgDisableTpconlyTrack);
+    fV0PhotonCut.SetRequireITSTPC(configPcmCuts.cfgRequireV0WithItstpc);
+    fV0PhotonCut.SetRequireITSonly(configPcmCuts.cfgRequireV0WithItsonly);
+    fV0PhotonCut.SetRequireTPConly(configPcmCuts.cfgRequireV0WithTpconly);
+  }
+
+  // add pmeventId() due to unguarded call in V0PhotonCut.h qa; selection unaffected
+  template <typename T_V0PhotonType>
+  struct V0PhotonNoEvent : T_V0PhotonType {
+    explicit V0PhotonNoEvent(T_V0PhotonType const& v0PhotonType) : T_V0PhotonType(v0PhotonType) {}
+    [[nodiscard]] int pmeventId() const { return -1; }
+  };
+  bool isSelectedV0Photon(auto const& v0Photon)
+  {
+    using V0PhotonType = std::decay_t<decltype(v0Photon)>;
+    return fV0PhotonCut.template IsSelected<V0PhotonNoEvent<V0PhotonType>, aod::V0Legs>(V0PhotonNoEvent<V0PhotonType>{v0Photon});
+  }
+
+  void init(InitContext&) {
+    initV0PhotonCut();
+  }
+
+  void process(aod::HpcPhotonPcmV0PhotonIds const& photonPcms, aod::HpcPhotonPcmPairV0PhotonIds const& photonPcmPairs,
+               aod::V0PhotonsKF const& v0Photons, aod::V0Legs const&)
+  {
+    // joinable tables
+    for (auto const& photonPcm : photonPcms) {
+      photonPcmSel(isSelectedV0Photon(photonPcm.v0PhotonKF()));
+    }
+    for (auto const& pair : photonPcmPairs) {
+      auto const v0Photon1 = pair.v0PhotonKF1();
+      auto const v0Photon2 = pair.v0PhotonKF2();
+      double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
+      double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
+      double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
+      photonPcmPairSel(isSelectedV0Photon(v0Photon1) && isSelectedV0Photon(v0Photon2), energyAsym);
+    }
+  }
+};
 
 // correlation analysis ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/
@@ -150,38 +257,6 @@ struct HadronPhotonCorrelation {
 
     Configurable<double> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
   } config;
-
-  // pcm cuts
-  struct : o2::framework::ConfigurableGroup {
-    std::string prefix = "pcmcut_group";
-    o2::framework::Configurable<bool> cfgRequireV0WithItstpc{"cfgRequireV0WithItstpc", false, "flag to select V0s with ITS-TPC matched tracks"};
-    o2::framework::Configurable<bool> cfgRequireV0WithItsonly{"cfgRequireV0WithItsonly", false, "flag to select V0s with ITSonly tracks"};
-    o2::framework::Configurable<bool> cfgRequireV0WithTpconly{"cfgRequireV0WithTpconly", false, "flag to select V0s with TPConly tracks"};
-    o2::framework::Configurable<float> cfgMinPtV0{"cfgMinPtV0", 0.1, "min pt for v0 photons at PV"};
-    o2::framework::Configurable<float> cfgMaxPtV0{"cfgMaxPtV0", 1e+10, "max pt for v0 photons at PV"};
-    o2::framework::Configurable<float> cfgMinEtaV0{"cfgMinEtaV0", -1e+10, "min eta for v0 photons at PV"};
-    o2::framework::Configurable<float> cfgMaxEtaV0{"cfgMaxEtaV0", 1e+10, "max eta for v0 photons at PV"};
-    o2::framework::Configurable<float> cfgMinV0radius{"cfgMinV0radius", 4.0, "min v0 radius"};
-    o2::framework::Configurable<float> cfgMaxV0radius{"cfgMaxV0radius", 90.0, "max v0 radius"};
-    o2::framework::Configurable<float> cfgMidLV0radius{"cfgMidLV0radius", -1.0, "middle low v0 radius for rejection if >0"};
-    o2::framework::Configurable<float> cfgMidHV0radius{"cfgMidHV0radius", -1.0, "middle high v0 radius for rejection if >0"};
-    o2::framework::Configurable<float> cfgMaxAlphaAp{"cfgMaxAlphaAp", 0.95, "max alpha for AP cut"};
-    o2::framework::Configurable<float> cfgMaxQtAp{"cfgMaxQtAp", 0.01, "max qT for AP cut"};
-    o2::framework::Configurable<float> cfgMinCospa{"cfgMinCospa", 0.999, "min V0 CosPA"};
-    o2::framework::Configurable<float> cfgMaxPca{"cfgMaxPca", 1.5, "max distance btween 2 legs"};
-    o2::framework::Configurable<float> cfgMaxChi2kf{"cfgMaxChi2kf", 1e+10, "max chi2/ndf with KF"};
-    o2::framework::Configurable<bool> cfgRejectV0OnItsib{"cfgRejectV0OnItsib", true, "flag to reject V0s on ITSib"};
-
-    o2::framework::Configurable<int> cfgMinNclusterTpc{"cfgMinNclusterTpc", 0, "min ncluster tpc"};
-    o2::framework::Configurable<int> cfgMinNcrossedrows{"cfgMinNcrossedrows", 40, "min ncrossed rows"};
-    o2::framework::Configurable<float> cfgMaxFracSharedClustersTpc{"cfgMaxFracSharedClustersTpc", 999.f, "max fraction of shared clusters in TPC"};
-    o2::framework::Configurable<float> cfgMaxChi2tpc{"cfgMaxChi2tpc", 4.0, "max chi2/NclsTPC"};
-    o2::framework::Configurable<float> cfgMaxChi2its{"cfgMaxChi2its", 36.0, "max chi2/NclsITS"};
-    o2::framework::Configurable<float> cfgMinTPCNsigmaEl{"cfgMinTPCNsigmaEl", -3.0, "min. TPC n sigma for electron"};
-    o2::framework::Configurable<float> cfgMaxTPCNsigmaEl{"cfgMaxTPCNsigmaEl", +3.0, "max. TPC n sigma for electron"};
-    o2::framework::Configurable<bool> cfgDisableItsonlyTrack{"cfgDisableItsonlyTrack", false, "flag to disable ITSonly tracks"};
-    o2::framework::Configurable<bool> cfgDisableTpconlyTrack{"cfgDisableTpconlyTrack", false, "flag to disable TPConly tracks"};
-  } configPcmCuts;
 
   // histogram config
   struct : ConfigurableGroup {
@@ -287,6 +362,9 @@ struct HadronPhotonCorrelation {
 
   // filters
   expressions::Filter filterEvTotal = aod::hpc_common::selEv == true && aod::hpc_common::nSelectSplitMcEv == config.nSelectSplitMcEv;
+  Filter filterPhotonPcm = aod::hpc_photon_pcm::selPhotonPcm == true;
+  Filter filterPhotonPcmPair = aod::hpc_photon_pcm_pair::selPhotons == true &&
+                               aod::hpc_photon_pcm_pair::energyAsym < expressions::as<float>(config.energyAsymmPhotonPairMax);
 
   // partitions
   SliceCache cache;
@@ -445,9 +523,6 @@ struct HadronPhotonCorrelation {
   std::unique_ptr<MixingTriggerMemory> triggerMemoryTrue;
   std::unique_ptr<MixingTriggerMemory> triggerMemoryTrueRecoEv;
   std::unique_ptr<MixingTriggerMemory> triggerMemoryTrueRecoEvRecoPtTrig;
-
-  // pcm cut class
-  V0PhotonCut fV0PhotonCut;
 
   // functions ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ==========================================================================================================================================================================================
@@ -749,38 +824,6 @@ struct HadronPhotonCorrelation {
                kTHnSparseD, {axisPtTrig, axisPtAssoc, axisDcaZ, axisZPvBinning, axisMultBinning}, true);
   }
 
-  // init pcm cut class
-  void initV0PhotonCut()
-  {
-    fV0PhotonCut = V0PhotonCut("fV0PhotonCut", "fV0PhotonCut");
-
-    // for v0
-    fV0PhotonCut.SetV0PtRange(configPcmCuts.cfgMinPtV0, configPcmCuts.cfgMaxPtV0);
-    fV0PhotonCut.SetV0EtaRange(configPcmCuts.cfgMinEtaV0, configPcmCuts.cfgMaxEtaV0);
-    fV0PhotonCut.SetMinCosPA(configPcmCuts.cfgMinCospa);
-    fV0PhotonCut.SetMaxPCA(configPcmCuts.cfgMaxPca);
-    fV0PhotonCut.SetMaxChi2KF(configPcmCuts.cfgMaxChi2kf);
-    fV0PhotonCut.SetRxyRange(configPcmCuts.cfgMinV0radius, configPcmCuts.cfgMaxV0radius, configPcmCuts.cfgMidLV0radius, configPcmCuts.cfgMidHV0radius);
-    fV0PhotonCut.SetAPRange(configPcmCuts.cfgMaxAlphaAp, configPcmCuts.cfgMaxQtAp);
-    fV0PhotonCut.RejectITSib(configPcmCuts.cfgRejectV0OnItsib);
-
-    // for leg
-    fV0PhotonCut.SetMinNClustersTPC(configPcmCuts.cfgMinNclusterTpc);
-    fV0PhotonCut.SetMinNCrossedRowsTPC(configPcmCuts.cfgMinNcrossedrows);
-    fV0PhotonCut.SetMinNCrossedRowsOverFindableClustersTPC(0.8);
-    fV0PhotonCut.SetMaxFracSharedClustersTPC(configPcmCuts.cfgMaxFracSharedClustersTpc);
-    fV0PhotonCut.SetChi2PerClusterTPC(0.0, configPcmCuts.cfgMaxChi2tpc);
-    fV0PhotonCut.SetTPCNsigmaElRange(configPcmCuts.cfgMinTPCNsigmaEl, configPcmCuts.cfgMaxTPCNsigmaEl);
-    fV0PhotonCut.SetChi2PerClusterITS(-1e+10, configPcmCuts.cfgMaxChi2its);
-    fV0PhotonCut.SetNClustersITS(0, 7);
-    fV0PhotonCut.SetMeanClusterSizeITSob(0.0, 16.0);
-    fV0PhotonCut.SetDisableITSonly(configPcmCuts.cfgDisableItsonlyTrack);
-    fV0PhotonCut.SetDisableTPConly(configPcmCuts.cfgDisableTpconlyTrack);
-    fV0PhotonCut.SetRequireITSTPC(configPcmCuts.cfgRequireV0WithItstpc);
-    fV0PhotonCut.SetRequireITSonly(configPcmCuts.cfgRequireV0WithItsonly);
-    fV0PhotonCut.SetRequireTPConly(configPcmCuts.cfgRequireV0WithTpconly);
-  }
-
   // selections ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1035,49 +1078,6 @@ struct HadronPhotonCorrelation {
     double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
     double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
     return energyAsym < config.energyAsymmPhotonPairMax.value;
-  }
-
-  // add pmeventId() due to unguarded call in V0PhotonCut.h qa; selection unaffected
-  template <typename T_V0PhotonType>
-  struct V0PhotonNoEvent : T_V0PhotonType {
-    explicit V0PhotonNoEvent(T_V0PhotonType const& v0PhotonType) : T_V0PhotonType(v0PhotonType) {}
-    [[nodiscard]] int pmeventId() const { return -1; }
-  };
-  bool isSelectedV0Photon(auto const& v0Photon)
-  {
-    using V0PhotonType = std::decay_t<decltype(v0Photon)>;
-    return fV0PhotonCut.template IsSelected<V0PhotonNoEvent<V0PhotonType>, aod::V0Legs>(V0PhotonNoEvent<V0PhotonType>{v0Photon});
-  }
-
-  bool isSelectedPhotonPcm(auto const& photonPcm)
-  {
-    return isSelectedV0Photon(photonPcm.v0PhotonKF());
-  }
-  bool isSelectedPhotonPcmPair(auto const& photonPcmPair)
-  {
-    if (!isSelectedV0Photon(photonPcmPair.v0PhotonKF1()) || !isSelectedV0Photon(photonPcmPair.v0PhotonKF2())) {
-      return false;
-    }
-    if (!checkEnergyAsymDiPhoton(photonPcmPair.v0PhotonKF1(), photonPcmPair.v0PhotonKF2())) {
-      return false;
-    }
-    return true;
-  }
-
-  template <AssocType AssocTypeV>
-  bool isSelectedAssoc(auto const& associated)
-  {
-    if constexpr (AssocTypeV == AssocType::Hadron) {
-      return true;
-    } else if constexpr (AssocTypeV == AssocType::Pipm) {
-      return true;
-    } else if constexpr (AssocTypeV == AssocType::PhotonPcm) {
-      return isSelectedPhotonPcm(associated);
-    } else if constexpr (AssocTypeV == AssocType::PhotonPcmPair) {
-      return isSelectedPhotonPcmPair(associated);
-    } else {
-      static_assert(AlwaysFalseValue<AssocTypeV>, "assocType not found");
-    }
   }
 
   // analysis helpers /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1385,10 +1385,6 @@ struct HadronPhotonCorrelation {
       throw std::runtime_error("absEtaMax does not match binsDEta axis");
     }
 
-    if (config.absEtaMax.value > std::abs(configPcmCuts.cfgMinEtaV0) || config.absEtaMax.value > std::abs(configPcmCuts.cfgMaxEtaV0)) {
-      throw std::runtime_error("absEtaMax does not constrain v0 cut");
-    }
-
     int const nParTcm = 6;
     if (config.applyScalingPhotonPt.value && (config.parScalingPhotonPtData.value.size() != nParTcm || config.parScalingPhotonPtMc.value.size() != nParTcm)) {
       throw std::runtime_error("wrong number of mc scaling params for photon");
@@ -1415,9 +1411,6 @@ struct HadronPhotonCorrelation {
                                                                      config.nTriggerSavedForMixing.value);
     triggerMemoryTrueRecoEvRecoPtTrig = std::make_unique<MixingTriggerMemory>(configHist.binsZPvBinningMcTrue.value, configHist.binsMultBinningMcTrue.value,
                                                                                config.nTriggerSavedForMixing.value);
-
-    // init EM pcm cut class
-    initV0PhotonCut();
   }
 
   // reco only ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1447,11 +1440,6 @@ struct HadronPhotonCorrelation {
       }();
 
       auto const funcPlain = [this](auto const& collision, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
-
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(),
                                                        collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
@@ -1460,10 +1448,6 @@ struct HadronPhotonCorrelation {
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
 
       auto const funcCorrelation = [this](auto const& collision, auto const& trigger, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
         // exclude self correlation
         if (isRecoSelfTrigger(trigger, associated)) {
           return;
@@ -1482,10 +1466,6 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const conditionMixAssocOnly = [this](auto const& associated) {
-        // reco assoc selection
-        return isSelectedAssoc<AssocTypeV>(associated);
-      };
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
@@ -1494,7 +1474,7 @@ struct HadronPhotonCorrelation {
                               getTriggerPtCorrection(mixingTrigger.pt());
         fillHistMain<HistFillMode::Mixing, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
     }
   }
 
@@ -1510,7 +1490,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPipm, "process standard for associated pipm", false);
 
-  void processRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                             aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -1542,7 +1522,7 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  void processRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmPairsWithV0> const& photonPcmPairs,
                                 aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     for (auto const& collision : collisions) {
@@ -1551,11 +1531,6 @@ struct HadronPhotonCorrelation {
       auto const photonPcmPairsThisEvent = photonPcmPairs.sliceBy(perColPhotonPcmPairs, collision.globalIndex());
 
       auto const funcPlain = [this](auto const& collision, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
-
         double const weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated);
 
         // mgg distribution
@@ -1570,10 +1545,6 @@ struct HadronPhotonCorrelation {
       corrProcessPlain(collision, photonPcmPairsThisEvent, funcPlain);
 
       auto const funcCorrelation = [this](auto const& collision, auto const& trigger, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
         // exclude self correlation
         if (isRecoSelfTrigger(trigger, associated)) {
           return;
@@ -1599,10 +1570,6 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const conditionMixAssocOnly = [this](auto const& associated) {
-        // reco assoc selection
-        return isSelectedAssoc<AssocType::PhotonPcmPair>(associated);
-      };
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
@@ -1611,12 +1578,12 @@ struct HadronPhotonCorrelation {
                               getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, associated.mgg());
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
-  void processPhotonPcmPairMix(soa::Filtered<aod::HpcCollisions> const& collisions, PhotonPcmsWithV0 const& photonPcms,
+  void processPhotonPcmPairMix(soa::Filtered<aod::HpcCollisions> const& collisions, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                                aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
@@ -1636,9 +1603,6 @@ struct HadronPhotonCorrelation {
           continue;
         }
         // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm1) || !isSelectedAssoc<AssocType::PhotonPcm>(photonPcm2)) {
-          continue;
-        }
         if (!checkEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF())) {
           continue;
         }
@@ -1653,15 +1617,10 @@ struct HadronPhotonCorrelation {
   // other ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processPcmDcaZ(soa::Filtered<aod::HpcCollisions>::iterator const& collision, PhotonPcmsWithV0 const& photonPcms,
+  void processPcmDcaZ(soa::Filtered<aod::HpcCollisions>::iterator const& collision, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                       aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     for (auto const& photonPcm : photonPcms) {
-      // reco assoc selection
-      if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm)) {
-        continue;
-      }
-
       double const weight = getMcAssocPtScaling<AssocType::PhotonPcm>(photonPcm) * getMcK0ShortPtScaling<AssocType::PhotonPcm>(photonPcm);
 
       histos.fill(HIST("reco/plain/h5_ptTrigPtAssocDcaZZPvMult_photonPcm"),
@@ -2099,11 +2058,6 @@ struct HadronPhotonCorrelation {
       }();
 
       auto const funcPlain = [this](auto const& collision, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
-
         HistFillInfoPlainPhiEtaZPvMult histFillInfo = {collision.ptMax(), associated.pt(), associated.phi(), associated.eta(),
                                                        collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
         histFillInfo.weight = getMcAssocPtScaling<AssocTypeV>(associated) * getMcK0ShortPtScaling<AssocTypeV>(associated);
@@ -2112,10 +2066,6 @@ struct HadronPhotonCorrelation {
       corrProcessPlain(collision, assocsThisEvent, funcPlain);
 
       auto const funcCorrelation = [this](auto const& collision, auto const& trigger, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocTypeV>(associated)) {
-          return;
-        }
         // exclude self correlation
         if (isRecoSelfTrigger(trigger, associated)) {
           return;
@@ -2134,10 +2084,6 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const conditionMixAssocOnly = [this](auto const& associated) {
-        // reco assoc selection
-        return isSelectedAssoc<AssocTypeV>(associated);
-      };
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
@@ -2146,7 +2092,7 @@ struct HadronPhotonCorrelation {
                               getTriggerPtCorrection(mixingTrigger.pt());
         fillTruthLevelsMcRecoStd<HistFillMode::Mixing, AssocTypeV>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, conditionMixAssocOnly);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
     }
   }
 
@@ -2162,7 +2108,7 @@ struct HadronPhotonCorrelation {
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcRecoPipm, "process standard for associated pipm with additional mc information", false);
 
-  void processMcRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, PhotonPcmsWithV0 const& photonPcms,
+  void processMcRecoPhotonPcm(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmsWithV0> const& photonPcms,
                               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcessMcRecoStd<AssocType::PhotonPcm>(collisions, triggers, photonPcms);
@@ -2251,11 +2197,6 @@ struct HadronPhotonCorrelation {
       auto const photonPcmPairsThisEvent = photonPcmPairs.sliceBy(perColPhotonPcmPairs, collision.globalIndex());
 
       auto const funcPlain = [this](auto const& collision, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
-
         HistFillInfoPlainPt histFillInfo = {collision.ptMax(), associated.pt()};
         histFillInfo.weight = getMcAssocPtScaling<AssocType::PhotonPcmPair>(associated) * getMcK0ShortPtScaling<AssocType::PhotonPcmPair>(associated);
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Plain>(histFillInfo, collision, associated);
@@ -2263,10 +2204,6 @@ struct HadronPhotonCorrelation {
       corrProcessPlain(collision, photonPcmPairsThisEvent, funcPlain);
 
       auto const funcCorrelation = [this](auto const& collision, auto const& trigger, auto const& associated) {
-        // reco assoc selection
-        if (!isSelectedAssoc<AssocType::PhotonPcmPair>(associated)) {
-          return;
-        }
         // exclude self correlation
         if (isRecoSelfTrigger(trigger, associated)) {
           return;
@@ -2285,10 +2222,6 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const conditionMixAssocOnly = [this](auto const& associated) {
-        // reco assoc selection
-        return isSelectedAssoc<AssocType::PhotonPcmPair>(associated);
-      };
       auto const funcMixing = [this](auto const& collision, auto const& mixingTrigger, auto const& associated, auto const perTriggerWeight) {
         HistFillInfoCorr histFillInfo = {getDeltaPhi(mixingTrigger.phi(), associated.phi()), mixingTrigger.eta() - associated.eta(),
                                          mixingTrigger.pt(), associated.pt(), collision.posZ(), static_cast<double>(collision.nGlobalTracks())};
@@ -2297,11 +2230,11 @@ struct HadronPhotonCorrelation {
                               getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsMcRecoPhotonPcmPair<HistFillMode::Mixing>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value, conditionMixAssocOnly);
+      corrProcessMixing<TriggerMemoryMode::Reco>(collision, photonPcmPairsThisEvent, funcMixing, config.nMixingAt0PhotonPcmPair.value);
     }
   }
 
-  void processMcRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, PhotonPcmPairsWithV0 const& photonPcmPairs,
+  void processMcRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmPairsWithV0> const& photonPcmPairs,
                                   aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     fillProcesMcRecoPhotonPcmPair(collisions, triggers, photonPcmPairs);
@@ -2311,14 +2244,10 @@ struct HadronPhotonCorrelation {
   // other ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  void processPcmDcaZTrue(soa::Filtered<HpcCollisionsMcD>::iterator const& collision, soa::Join<PhotonPcmsWithV0, aod::HpcPhotonPcmTrackIds> const& photonPcms,
+  void processPcmDcaZTrue(soa::Filtered<HpcCollisionsMcD>::iterator const& collision, soa::Filtered<soa::Join<PhotonPcmsWithV0, aod::HpcPhotonPcmTrackIds>> const& photonPcms,
                           aod::V0PhotonsKF const&, aod::V0Legs const&, aod::JetTracksMCD const&, soa::Filtered<HpcMcCollisions> const&, aod::JetParticles const&)
   {
     for (auto const& photonPcm : photonPcms) {
-      // reco assoc selection
-      if (!isSelectedAssoc<AssocType::PhotonPcm>(photonPcm)) {
-        continue;
-      }
       if (!checkTruthLevelReco<TruthLevel::RecoMcMatched, AssocType::PhotonPcm>(photonPcm)) {
         continue;
       }
@@ -2446,5 +2375,5 @@ struct HadronPhotonCorrelation {
 
 WorkflowSpec defineDataProcessing(ConfigContext const& configContext)
 {
-  return WorkflowSpec{adaptAnalysisTask<HadronPhotonCorrelation>(configContext)};
+  return WorkflowSpec{adaptAnalysisTask<HadronPhotonCorrelation>(configContext), adaptAnalysisTask<HadronPhotonPcmSelection>(configContext)};
 }
