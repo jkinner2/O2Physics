@@ -177,7 +177,7 @@ struct HadronPhotonPcmSelection {
   }
 
   void process(aod::HpcPhotonPcmV0PhotonIds const& photonPcms, aod::HpcPhotonPcmPairV0PhotonIds const& photonPcmPairs,
-               aod::V0PhotonsKF const& v0Photons, aod::V0Legs const&)
+               aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     // joinable tables
     for (auto const& photonPcm : photonPcms) {
@@ -255,7 +255,7 @@ struct HadronPhotonCorrelation {
     Configurable<std::vector<double>> etaPcmLowSideMassRange{"etaPcmLowSideMassRange", {0.44, 0.48}, "photon-pair mass integration range below etaPcm region"};
     Configurable<std::vector<double>> etaPcmHighSideMassRange{"etaPcmHighSideMassRange", {0.58, 0.62}, "photon-pair mass integration range above etaPcm region"};
 
-    Configurable<double> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
+    Configurable<float> energyAsymmPhotonPairMax{"energyAsymmPhotonPairMax", 1.0, "maximum energy asymmetry ((E1 - E2) / (E1 + E2)) of photon pairs"};
   } config;
 
   // histogram config
@@ -362,9 +362,9 @@ struct HadronPhotonCorrelation {
 
   // filters
   expressions::Filter filterEvTotal = aod::hpc_common::selEv == true && aod::hpc_common::nSelectSplitMcEv == config.nSelectSplitMcEv;
-  Filter filterPhotonPcm = aod::hpc_photon_pcm::selPhotonPcm == true;
-  Filter filterPhotonPcmPair = aod::hpc_photon_pcm_pair::selPhotons == true &&
-                               aod::hpc_photon_pcm_pair::energyAsym < expressions::as<float>(config.energyAsymmPhotonPairMax);
+  expressions::Filter filterPhotonPcm = aod::hpc_photon_pcm::selPhotonPcm == true;
+  expressions::Filter filterPhotonPcmPair = aod::hpc_photon_pcm_pair::selPhotons == true &&
+                                            aod::hpc_photon_pcm_pair::energyAsym < expressions::as<float>(config.energyAsymmPhotonPairMax);
 
   // partitions
   SliceCache cache;
@@ -1588,7 +1588,8 @@ struct HadronPhotonCorrelation {
   {
     BinningZPvMult const binningZPvMult{{prependVariableWidth(configHist.binsZPvBinning.value), prependVariableWidth(configHist.binsMultBinning.value)}, true};
     auto photonPcmsTuple = std::make_tuple(photonPcms);
-    SameKindPair<aod::HpcCollisions, PhotonPcmsWithV0, BinningZPvMult> pairs{binningZPvMult, config.nNeighboursMixingPhotonPcmPair.value, -1, collisions, photonPcmsTuple, &cache};
+    SameKindPair<soa::Filtered<aod::HpcCollisions>, soa::Filtered<PhotonPcmsWithV0>, BinningZPvMult> pairs{binningZPvMult, config.nNeighboursMixingPhotonPcmPair.value, -1,
+                                                                                                           collisions, photonPcmsTuple, &cache};
 
     // mixed events
     for (auto pair = pairs.begin(); pair != pairs.end(); pair++) {
