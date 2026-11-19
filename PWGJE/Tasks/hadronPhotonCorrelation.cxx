@@ -172,6 +172,15 @@ struct HadronPhotonPcmSelection {
     return fV0PhotonCut.template IsSelected<V0PhotonNoEvent<V0PhotonType>, aod::V0Legs>(V0PhotonNoEvent<V0PhotonType>{v0Photon});
   }
 
+  // energy asymmetry for photon pair
+  static double getEnergyAsymDiPhoton(auto const& v0Photon1, auto const& v0Photon2)
+  {
+    double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
+    double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
+    double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
+    return energyAsym;
+  }
+
   void init(InitContext&)
   {
     initV0PhotonCut();
@@ -187,10 +196,7 @@ struct HadronPhotonPcmSelection {
     for (auto const& pair : photonPcmPairs) {
       auto const v0Photon1 = pair.v0PhotonKF1();
       auto const v0Photon2 = pair.v0PhotonKF2();
-      double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
-      double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
-      double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
-      photonPcmPairSel(isSelectedV0Photon(v0Photon1) && isSelectedV0Photon(v0Photon2), energyAsym);
+      photonPcmPairSel(isSelectedV0Photon(v0Photon1) && isSelectedV0Photon(v0Photon2), getEnergyAsymDiPhoton(v0Photon1, v0Photon2));
     }
   }
   PROCESS_SWITCH(HadronPhotonPcmSelection, processSelection, "process photonPcm selection", false);
@@ -372,7 +378,6 @@ struct HadronPhotonCorrelation {
   SliceCache cache;
 
   // prepare for per collision slicing
-  Preslice<aod::JetTracks> perColTracks = aod::jtrack::collisionId;
   Preslice<aod::HpcTriggers> perColTriggers = aod::hpc_common::corrCollisionId;
   Preslice<aod::HpcHadrons> perColHadrons = aod::hpc_common::corrCollisionId;
   Preslice<aod::HpcPipms> perColPipms = aod::hpc_common::corrCollisionId;
@@ -1072,17 +1077,6 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  // reco/systematic cuts ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-  // energy asymmetry for photon pair
-  bool checkEnergyAsymDiPhoton(auto const& v0Photon1, auto const& v0Photon2)
-  {
-    double const e1 = v0Photon1.pt() * std::cosh(v0Photon1.eta());
-    double const e2 = v0Photon2.pt() * std::cosh(v0Photon2.eta());
-    double const energyAsym = std::abs((e1 - e2) / (e1 + e2));
-    return energyAsym < config.energyAsymmPhotonPairMax.value;
-  }
-
   // analysis helpers /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1370,25 +1364,23 @@ struct HadronPhotonCorrelation {
     ccdb->setCreatedNotAfter(noLaterThanCcdb);
 
     // variables from other tasks
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "absEtaMax", absEtaMaxProducer, false)) {
-      throw std::runtime_error("getTaskOptionValue failed for absEtaMax");
-    }
-    if (std::abs(config.absEtaMax.value - absEtaMaxProducer) > doublePrecisionDeltaCheck) {
-      throw std::runtime_error("absEtaMax does not match producer");
-    }
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "ptTrigMin", ptTrigMinProducer, false)) {
-      throw std::runtime_error("getTaskOptionValue fialed for ptTrigMin");
-    }
-    if (std::abs(config.ptTrigMin.value - ptTrigMinProducer) > doublePrecisionDeltaCheck) {
-      throw std::runtime_error("ptTrigMin does not match producer");
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "absEtaMax", absEtaMaxProducer, false)) {
+      if (std::abs(config.absEtaMax.value - absEtaMaxProducer) > doublePrecisionDeltaCheck) {
+        throw std::runtime_error("absEtaMax does not match producer");
+      }
     }
 
-    if (!common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMinEtaV0", cfgMinEtaV0Selection, false) ||
-        !common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMaxEtaV0", cfgMaxEtaV0Selection, false)) {
-      throw std::runtime_error("getTaskOptionValue fialed for pcmcut_group.cfgMinEtaV0 or pcmcut_group.cfgMaxEtaV0");
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "ptTrigMin", ptTrigMinProducer, false)) {
+      if (std::abs(config.ptTrigMin.value - ptTrigMinProducer) > doublePrecisionDeltaCheck) {
+        throw std::runtime_error("ptTrigMin does not match producer");
+      }
     }
-    if (config.absEtaMax.value > std::abs(cfgMinEtaV0Selection) || config.absEtaMax.value > std::abs(cfgMaxEtaV0Selection)) {
-      throw std::runtime_error("absEtaMax does not constrain v0 cut");
+
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMinEtaV0", cfgMinEtaV0Selection, false) &&
+        common::core::getTaskOptionValue(initContext, "hadron-photon-pcm-selection", "pcmcut_group.cfgMaxEtaV0", cfgMaxEtaV0Selection, false)) {
+      if (config.absEtaMax.value > std::abs(cfgMinEtaV0Selection) || config.absEtaMax.value > std::abs(cfgMaxEtaV0Selection)) {
+        throw std::runtime_error("absEtaMax does not constrain v0 cut");
+      }
     }
 
     // check coherent config
@@ -1656,7 +1648,7 @@ struct HadronPhotonCorrelation {
           continue;
         }
         // reco assoc selection
-        if (!checkEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF())) {
+        if (getEnergyAsymDiPhoton(photonPcm1.v0PhotonKF(), photonPcm2.v0PhotonKF()) > config.energyAsymmPhotonPairMax.value) {
           continue;
         }
 

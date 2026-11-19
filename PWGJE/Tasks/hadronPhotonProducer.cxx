@@ -727,15 +727,22 @@ struct HadronPhotonProducer {
       // photonsPcm (for some reason collisionId not an index column (?))
       auto const v0PhotonsThisEvent = v0Photons.sliceBy(perColV0Photons, collision.collisionId());
 
+      auto const checkPhotonEtaDcaZ = [this](auto const& v0Photon) {
+        if (std::abs(v0Photon.eta()) > absEtaMax) {
+          return false;
+        }
+        if (std::abs(v0Photon.dcaZtopv()) < pcmAbsDcaZLim.value[0] || std::abs(v0Photon.dcaZtopv()) > pcmAbsDcaZLim.value[1]) {
+          return false;
+        }
+        return true;
+      }
+
       // photonPcm
       for (auto const& v0Photon : v0PhotonsThisEvent) {
         std::vector<int> intersectTriggerIds;
 
         // photon selection
-        if (std::abs(v0Photon.eta()) > absEtaMax) {
-          continue;
-        }
-        if (std::abs(v0Photon.dcaZtopv()) < pcmAbsDcaZLim.value[0] || std::abs(v0Photon.dcaZtopv()) > pcmAbsDcaZLim.value[1]) {
+        if (!checkPhotonEtaDcaZ(v0Photon)) {
           continue;
         }
 
@@ -781,7 +788,7 @@ struct HadronPhotonProducer {
         ROOT::Math::PtEtaPhiMVector const p4V0PcmPair = p4V0Pcm1 + p4V0Pcm2;
 
         // pair selection
-        if (std::abs(v0Photon1.eta()) > absEtaMax || std::abs(v0Photon2.eta()) > absEtaMax) {
+        if (!checkPhotonEtaDcaZ(v0Photon1) || !checkPhotonEtaDcaZ(v0Photon2)) {
           continue;
         }
         if (std::abs(p4V0PcmPair.Eta()) > absEtaMax) {
