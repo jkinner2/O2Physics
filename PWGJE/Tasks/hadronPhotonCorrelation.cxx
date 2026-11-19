@@ -1343,8 +1343,7 @@ struct HadronPhotonCorrelation {
 
     // analysis info
     int64_t const noLaterThanCcdb =
-      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() :
-                                                 config.noLaterThanCcdbConfig.value;
+      config.noLaterThanCcdbConfig.value == -1 ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() : config.noLaterThanCcdbConfig.value;
     ccdb->setURL(config.urlCcdb.value);
     // enabling object caching (otherwise each call goes to CCDB server)
     ccdb->setCaching(true);
@@ -1432,7 +1431,8 @@ struct HadronPhotonCorrelation {
   // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
   template <HistFillMode HistFillModeV, AssocType AssocTypeV, bool FillMcRecoInfo>
-  void fillAssocsRecoMain(auto histFillInfo, auto const& collision, auto const& associated) {
+  void fillAssocsRecoMain(auto histFillInfo, auto const& collision, auto const& associated)
+  {
     if constexpr (AssocTypeV == AssocType::Hadron || AssocTypeV == AssocType::Pipm || AssocTypeV == AssocType::PhotonPcm) {
       fillHistMain<HistFillModeV, TruthLevel::Reco, AssocTypeV>(histFillInfo);
       if constexpr (FillMcRecoInfo) {
@@ -1652,7 +1652,8 @@ struct HadronPhotonCorrelation {
   }
 
   template <HistFillMode HistFillModeV, TruthLevel TruthLevelV, AssocType AssocTypeV>
-  void fillPi0EtaMcTrue(auto& histFillInfo, auto const& assocParticle, auto const& isDecaySelfTrig) {
+  void fillPi0EtaMcTrue(auto& histFillInfo, auto const& assocParticle, auto const& isDecaySelfTrig)
+  {
     // mc-to-data scaling
     histFillInfo.weight *= getMcAssocPtScalingFromPt<AssocTypeV>(assocParticle.pt());
 
@@ -1785,7 +1786,8 @@ struct HadronPhotonCorrelation {
   }
 
   template <TruthLevel TruthLevelV>
-  void fillProcessMcTrueTrig(auto const& collisions, auto const& trueTriggers, auto const& mcParticles) {
+  void fillProcessMcTrueTrig(auto const& collisions, auto const& trueTriggers, auto const& mcParticles)
+  {
     for (auto const& collision : collisions) {
       if constexpr (TruthLevelV == TruthLevel::TrueRecoEv) {
         if (!isMcMatchedCollision(collision)) {
@@ -1849,7 +1851,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevelV>(histFillInfo, assocParticle);
       };
       corrProcessMixing<TruthLevelV>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                 [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
+                                     [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
 
@@ -1934,7 +1936,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
       corrProcessMixing<TruthLevel::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                                 [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
+                                                          [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);

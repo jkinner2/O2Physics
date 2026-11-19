@@ -46,6 +46,7 @@
 #include <algorithm>
 #include <cmath>
 #include <concepts>
+#include <initializer_list>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -161,7 +162,8 @@ struct HadronPhotonProducer {
   }
 
   template <typename T>
-  std::vector<int> getIntersectTriggerIds(std::initializer_list<T> const& tracks) {
+  std::vector<int> getIntersectTriggerIds(std::initializer_list<T> const& tracks)
+  {
     std::vector<int> intersectTriggerIds;
 
     for (auto const& track : tracks) {
@@ -208,7 +210,8 @@ struct HadronPhotonProducer {
   }
 
   // checks v0Photon eta and dcaZ
-  bool checkPhotonEtaDcaZ(auto const& v0Photon) {
+  bool checkPhotonEtaDcaZ(auto const& v0Photon)
+  {
     if (std::abs(v0Photon.eta()) > absEtaMax) {
       return false;
     }
@@ -216,7 +219,7 @@ struct HadronPhotonProducer {
       return false;
     }
     return true;
-  };
+  }
 
   // checks pipm selection (just pid (no additional track cuts)
   bool checkPipmTPCTOF(auto const& track)
@@ -513,7 +516,8 @@ struct HadronPhotonProducer {
       throw std::runtime_error("invalid doprocess-collisionTrigger config");
     }
     if (static_cast<int>(doprocessRecoHadronPipmTPCTOF) + static_cast<int>(doprocessMcRecoHadronPipmTPCTOF) +
-        static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) > 1) {
+          static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) >
+        1) {
       throw std::runtime_error("invalid doprocess-hadronPipm config");
     }
     if (static_cast<int>(doprocessRecoPhotonPcm) + static_cast<int>(doprocessMcRecoPhotonPcm) > 1) {
