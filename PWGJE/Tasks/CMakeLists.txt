@@ -115,6 +115,11 @@ o2physics_add_dpl_workflow(hadron-photon-correlation-sim
 										REUSE_FROM JetDataModelPCH
 										PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
 										COMPONENT_NAME Analysis)
+o2physics_add_dpl_workflow(hadron-photon-pcm-selection
+                    SOURCES hadronPhotonCorrelation.cxx
+                    REUSE_FROM JetDataModelPCH
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2Physics::PWGEMPhotonMesonCore
+                    COMPONENT_NAME Analysis)
 
 if(FastJet_FOUND)
     o2physics_add_dpl_workflow(jet-background-analysis

@@ -482,12 +482,14 @@ struct HadronPhotonProducer {
     triggerMaskBits = jetderiveddatautilities::initialiseTriggerMaskBits(triggerMasks);
 
     // check config
+
+    // doprocess combinations
+
     if (static_cast<int>(doprocessRecoCollisionTrigger) + static_cast<int>(doprocessMcRecoCollisionTrigger) > 1) {
       throw std::runtime_error("invalid doprocess-collisionTrigger config");
     }
     if (static_cast<int>(doprocessRecoHadronPipmTPCTOF) + static_cast<int>(doprocessMcRecoHadronPipmTPCTOF) +
-          static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) >
-        1) {
+        static_cast<int>(doprocessRecoHadronPipmTPC) + static_cast<int>(doprocessMcRecoHadronPipmTPC) > 1) {
       throw std::runtime_error("invalid doprocess-hadronPipm config");
     }
     if (static_cast<int>(doprocessRecoPhotonPcm) + static_cast<int>(doprocessMcRecoPhotonPcm) > 1) {
