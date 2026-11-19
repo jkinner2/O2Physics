@@ -177,8 +177,8 @@ struct HadronPhotonPcmSelection {
     initV0PhotonCut();
   }
 
-  void process(aod::HpcPhotonPcmV0PhotonIds const& photonPcms, aod::HpcPhotonPcmPairV0PhotonIds const& photonPcmPairs,
-               aod::V0PhotonsKF const&, aod::V0Legs const&)
+  void processSelection(aod::HpcPhotonPcmV0PhotonIds const& photonPcms, aod::HpcPhotonPcmPairV0PhotonIds const& photonPcmPairs,
+                        aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
     // joinable tables
     for (auto const& photonPcm : photonPcms) {
@@ -193,6 +193,7 @@ struct HadronPhotonPcmSelection {
       photonPcmPairSel(isSelectedV0Photon(v0Photon1) && isSelectedV0Photon(v0Photon2), energyAsym);
     }
   }
+  PROCESS_SWITCH(HadronPhotonPcmSelection, processSelection, "process photonPcm selection", false);
 };
 
 // correlation analysis ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1887,7 +1888,7 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const& mcCollision = collision.jetMcCollision_as<HpcMcCollisions>();
+      auto const& mcCollision = collision.jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
 
       // group collision
       auto const trueTriggersThisEvent = trueTriggers.sliceBy(perColTrueTriggers, collision.jetMcCollisionId());
@@ -1949,7 +1950,7 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const& mcCollision = collision.jetMcCollision_as<HpcMcCollisions>();
+      auto const& mcCollision = collision.jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
 
       // group collision
       auto const triggersThisEvent = triggers.sliceBy(perColTriggers, collision.globalIndex());
@@ -1959,7 +1960,7 @@ struct HadronPhotonCorrelation {
       std::map<AssocType, bool> const decaySelfTrigPlainMap = getDecaySelfTrigPlainMap<TruthLevel::TrueRecoEvRecoPtTrig>(triggersThisEvent);
 
       auto const funcPlain = [this, &decaySelfTrigPlainMap](auto const& collision, auto const& assocParticle) {
-        auto const& mcCollision = collision.template jetMcCollision_as<HpcMcCollisions>();
+        auto const& mcCollision = collision.template jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
         // self trigger info for decaying particles
         auto const isDecaySelfTrig = [&decaySelfTrigPlainMap](AssocType const assocType) {
           return decaySelfTrigPlainMap.at(assocType);
@@ -2339,7 +2340,7 @@ struct HadronPhotonCorrelation {
         continue;
       }
 
-      auto const& mcCollision = collision.jetMcCollision_as<HpcMcCollisions>();
+      auto const& mcCollision = collision.jetMcCollision_as<soa::Filtered<HpcMcCollisions>>();
 
       // group collision
       auto const trueTriggersThisEvent = trueTriggers.sliceBy(perColTrueTriggers, mcCollision.globalIndex());
