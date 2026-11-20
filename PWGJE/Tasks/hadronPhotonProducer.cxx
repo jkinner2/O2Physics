@@ -568,7 +568,6 @@ struct HadronPhotonProducer {
       }
       // maximum track pt
       float maxTrackPt = -1;
-      int maxTriggerCollisionId = -1;
       int maxTriggerGlobalIndex = -1;
       float maxTriggerPhi = 0;
       float maxTriggerEta = 0;
@@ -585,7 +584,6 @@ struct HadronPhotonProducer {
         nGlobalTracks++;
         if (track.pt() > maxTrackPt) {
           maxTrackPt = track.pt();
-          maxTriggerCollisionId = track.collisionId();
           maxTriggerGlobalIndex = track.globalIndex();
           maxTriggerPhi = track.phi();
           maxTriggerEta = track.eta();
@@ -603,7 +601,7 @@ struct HadronPhotonProducer {
 
         // trigger info
         histos.fill(HIST("reco/h3_ptPhiEta_trigger"), track.pt(), track.phi(), track.eta());
-        tableProduction.trigger(jetToHpcCollisionMap.at(track.collisionId()),
+        tableProduction.trigger(tableProduction.collision.lastIndex() + 1,
                                 track.pt(), track.phi(), track.eta());
         tableProduction.triggerTrackId(track.globalIndex());
         trackToTriggerMap[track.globalIndex()] = tableProduction.trigger.lastIndex();
@@ -611,7 +609,7 @@ struct HadronPhotonProducer {
       bool const isTriggerEvent = maxTrackPt > ptTrigMin;
       if (oneTriggerPerEvent && isSelectedEvent && isTriggerEvent) {
         histos.fill(HIST("reco/h3_ptPhiEta_trigger"), maxTrackPt, maxTriggerPhi, maxTriggerEta);
-        tableProduction.trigger(jetToHpcCollisionMap.at(maxTriggerCollisionId),
+        tableProduction.trigger(tableProduction.collision.lastIndex() + 1,
                                 maxTrackPt, maxTriggerPhi, maxTriggerEta);
         tableProduction.triggerTrackId(maxTriggerGlobalIndex);
         trackToTriggerMap[maxTriggerGlobalIndex] = tableProduction.trigger.lastIndex();
@@ -680,7 +678,7 @@ struct HadronPhotonProducer {
         // hadron info
         if (track.pt() > ptMinHadron) {
           histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
-          tableProduction.hadron(jetToHpcCollisionMap.at(track.collisionId()), intersectTriggerIds,
+          tableProduction.hadron(jetToHpcCollisionMap.at(collision.globalIndex()), intersectTriggerIds,
                                  track.pt(), track.phi(), track.eta(),
                                  static_cast<int>(truthLevelInfoHadron.truthLevel), truthLevelInfoHadron.ptTruePure);
           tableProduction.hadronTrackId(track.globalIndex());
@@ -709,7 +707,7 @@ struct HadronPhotonProducer {
 
         // pipm info
         histos.fill(HIST("reco/h3_ptPhiEta_pipm"), track.pt(), track.phi(), track.eta());
-        tableProduction.pipm(jetToHpcCollisionMap.at(track.collisionId()), intersectTriggerIds,
+        tableProduction.pipm(jetToHpcCollisionMap.at(collision.globalIndex()), intersectTriggerIds,
                              track.pt(), track.phi(), track.eta(),
                              static_cast<int>(truthLevelInfoPipm.truthLevel), truthLevelInfoPipm.ptTruePure);
         tableProduction.pipmTrackId(track.globalIndex());
