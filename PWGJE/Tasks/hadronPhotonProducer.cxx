@@ -132,6 +132,7 @@ struct HadronPhotonProducer {
   };
 
   // map jetTracks to produced triggers
+  std::map<int32_t, int32_t> jetToHpcCollisionMap;
   std::map<int32_t, int32_t> trackToTriggerMap;
 
   HistogramRegistry histos{"histogramRegistry", {}, OutputObjHandlingPolicy::AnalysisObject, false, false};
@@ -545,6 +546,7 @@ struct HadronPhotonProducer {
   void fillProcessRecoCollisionTrigger(auto const& collisions, auto const& tracks)
   {
     // clear mapping at start of dataframe (in first process)
+    jetToHpcCollisionMap.clear();
     trackToTriggerMap.clear();
 
     for (auto const& collision : collisions) {
@@ -601,7 +603,7 @@ struct HadronPhotonProducer {
 
         // trigger info
         histos.fill(HIST("reco/h3_ptPhiEta_trigger"), track.pt(), track.phi(), track.eta());
-        tableProduction.trigger(track.collisionId(),
+        tableProduction.trigger(jetToHpcCollisionMap.at(track.collisionId()),
                                 track.pt(), track.phi(), track.eta());
         tableProduction.triggerTrackId(track.globalIndex());
         trackToTriggerMap[track.globalIndex()] = tableProduction.trigger.lastIndex();
@@ -609,7 +611,7 @@ struct HadronPhotonProducer {
       bool const isTriggerEvent = maxTrackPt > ptTrigMin;
       if (oneTriggerPerEvent && isSelectedEvent && isTriggerEvent) {
         histos.fill(HIST("reco/h3_ptPhiEta_trigger"), maxTrackPt, maxTriggerPhi, maxTriggerEta);
-        tableProduction.trigger(maxTriggerCollisionId,
+        tableProduction.trigger(jetToHpcCollisionMap.at(maxTriggerCollisionId),
                                 maxTrackPt, maxTriggerPhi, maxTriggerEta);
         tableProduction.triggerTrackId(maxTriggerGlobalIndex);
         trackToTriggerMap[maxTriggerGlobalIndex] = tableProduction.trigger.lastIndex();
@@ -624,6 +626,7 @@ struct HadronPhotonProducer {
       if constexpr (IsCollisionMCD<decltype(collision)>) {
         tableProduction.collisionMcId(collision.mcCollisionId());
       }
+      jetToHpcCollisionMap[collision.globalIndex()] = tableProduction.collision.lastIndex();
     }
   }
 
@@ -677,7 +680,7 @@ struct HadronPhotonProducer {
         // hadron info
         if (track.pt() > ptMinHadron) {
           histos.fill(HIST("reco/h3_ptPhiEta_hadron"), track.pt(), track.phi(), track.eta());
-          tableProduction.hadron(track.collisionId(), intersectTriggerIds,
+          tableProduction.hadron(jetToHpcCollisionMap.at(track.collisionId()), intersectTriggerIds,
                                  track.pt(), track.phi(), track.eta(),
                                  static_cast<int>(truthLevelInfoHadron.truthLevel), truthLevelInfoHadron.ptTruePure);
           tableProduction.hadronTrackId(track.globalIndex());
@@ -706,7 +709,7 @@ struct HadronPhotonProducer {
 
         // pipm info
         histos.fill(HIST("reco/h3_ptPhiEta_pipm"), track.pt(), track.phi(), track.eta());
-        tableProduction.pipm(track.collisionId(), intersectTriggerIds,
+        tableProduction.pipm(jetToHpcCollisionMap.at(track.collisionId()), intersectTriggerIds,
                              track.pt(), track.phi(), track.eta(),
                              static_cast<int>(truthLevelInfoPipm.truthLevel), truthLevelInfoPipm.ptTruePure);
         tableProduction.pipmTrackId(track.globalIndex());
@@ -783,7 +786,7 @@ struct HadronPhotonProducer {
 
         // photonPcm info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcm"), v0Photon.pt(), v0Photon.phi(), v0Photon.eta());
-        tableProduction.photonPcm(collision.globalIndex(), intersectTriggerIds,
+        tableProduction.photonPcm(jetToHpcCollisionMap.at(collision.globalIndex()), intersectTriggerIds,
                                   v0Photon.pt(), v0Photon.phi(), v0Photon.eta(),
                                   static_cast<int>(truthLevelInfoPhotonPcm.truthLevel), truthLevelInfoPhotonPcm.ptTruePure,
                                   static_cast<int>(impurityInfoPhotonPcm.impurity), impurityInfoPhotonPcm.ptTrueOrigin);
@@ -832,7 +835,7 @@ struct HadronPhotonProducer {
 
         // photonPcmPair info
         histos.fill(HIST("reco/h3_ptPhiEta_photonPcmPair"), p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta());
-        tableProduction.photonPcmPair(collision.globalIndex(), intersectTriggerIds,
+        tableProduction.photonPcmPair(jetToHpcCollisionMap.at(collision.globalIndex()), intersectTriggerIds,
                                       p4V0PcmPair.Pt(), RecoDecay::constrainAngle(p4V0PcmPair.Phi(), 0), p4V0PcmPair.Eta(), p4V0PcmPair.M(),
                                       static_cast<int>(truthLevelInfoPi0Pcm.truthLevel), static_cast<int>(truthLevelInfoEtaPcm.truthLevel), ptTruePurePhotonPcmPair,
                                       static_cast<int>(photonImpurityInfoPi0Pcm.impurity), photonImpurityInfoPi0Pcm.ptTrueOrigin);
