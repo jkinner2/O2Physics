@@ -318,13 +318,13 @@ struct HadronPhotonCorrelation {
                                                      {-7, -5, -3, -1, 1, 3, 5, 7},
                                                      "zPv mixing bins"};
     Configurable<std::vector<double>> binsMultBinning{"binsMultBinning",
-                                                      {-0.5, 10.5, 15.5, 20.5, 27.5, 42.5},
+                                                      {-0.5, 10.5, 15.5, 20.5, 27.5, 66.5},
                                                       "multiplicity mixing bins"};
     Configurable<std::vector<double>> binsZPvBinningMcTrue{"binsZPvBinningMcTrue",
                                                            {-10000, 10000},
                                                            "zPv mixing bins for mc true"};
     Configurable<std::vector<double>> binsMultBinningMcTrue{"binsMultBinningMcTrue",
-                                                            {-0.5, 16.5, 24.5, 31.5, 39.5, 64.5},
+                                                            {-0.5, 16.5, 24.5, 31.5, 39.5, 99.5},
                                                             "multiplicity mixing bins for mc true"};
   } configHist;
 
@@ -1336,6 +1336,7 @@ struct HadronPhotonCorrelation {
   void init(InitContext& initContext)
   {
     double const doublePrecisionDeltaCheck = 1e-5;
+    double zPvMaxProducer;
     double absEtaMaxProducer;
     double ptTrigMinProducer;
     float cfgMinEtaV0Selection;
@@ -1352,12 +1353,18 @@ struct HadronPhotonCorrelation {
     ccdb->setCreatedNotAfter(noLaterThanCcdb);
 
     // variables from other tasks
+    if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "zPvMax", zPvMaxProducer, false)) {
+      if (std::abs(configHist.binsZPvBinning.value.front() + zPvMaxProducer) > doublePrecisionDeltaCheck ||
+          std::abs(configHist.binsZPvBinning.value.back() - zPvMaxProducer) > doublePrecisionDeltaCheck) {
+        throw std::runtime_error("binsZPvBinning does not match producer");
+      }
+    }
+    // variables from other tasks
     if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "absEtaMax", absEtaMaxProducer, false)) {
       if (std::abs(config.absEtaMax.value - absEtaMaxProducer) > doublePrecisionDeltaCheck) {
         throw std::runtime_error("absEtaMax does not match producer");
       }
     }
-
     if (common::core::getTaskOptionValue(initContext, "hadron-photon-producer", "ptTrigMin", ptTrigMinProducer, false)) {
       if (std::abs(config.ptTrigMin.value - ptTrigMinProducer) > doublePrecisionDeltaCheck) {
         throw std::runtime_error("ptTrigMin does not match producer");
@@ -1448,8 +1455,8 @@ struct HadronPhotonCorrelation {
     }
   }
 
-  template <AssocType AssocTypeV, bool FillMcRecoInfo>
-  void fillProcessRecoMain(auto const& collisions, auto const& triggers, auto const& assocs)
+  template <AssocType AssocTypeV, bool FillMcRecoInfo, typename T_AssocConditionMix = CorrConditionTrue>
+  void fillProcessRecoMain(auto const& collisions, auto const& triggers, auto const& assocs, T_AssocConditionMix const& mixConditionAssocOnly = {})
   {
     for (auto const& collision : collisions) {
       // group collision ++
@@ -1503,7 +1510,7 @@ struct HadronPhotonCorrelation {
                               getTriggerPtCorrection(mixingTrigger.pt());
         fillAssocsRecoMain<HistFillMode::Mixing, AssocTypeV, FillMcRecoInfo>(histFillInfo, collision, associated);
       };
-      corrProcessMixing<TruthLevel::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0);
+      corrProcessMixing<TruthLevel::Reco>(collision, assocsThisEvent, funcMixing, nMixingAt0, mixConditionAssocOnly);
     }
   }
 
@@ -1529,6 +1536,18 @@ struct HadronPhotonCorrelation {
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcm, "process standard for associated photonPcm", false);
 
   // photonPcmPair reco :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  bool fillConditionRecoPhotonPcmPairMix(auto const& associated) {
+    // pi0
+    if (isInMassRange<AssocType::Pi0PcmPeak>(associated.mgg()) || isInMassRange<AssocType::Pi0PcmSide>(associated.mgg())) {
+      return true;
+    }
+    // eta
+    if (isInMassRange<AssocType::EtaPcmPeak>(associated.mgg()) || isInMassRange<AssocType::EtaPcmSide>(associated.mgg())) {
+      return true;
+    }
+    return false;
+  }
 
   template <HistFillMode HistFillModeV>
   void fillAssocsRecoPhotonPcmPair(auto const& histFillInfo, auto const& collision, auto const& associated)
@@ -1567,7 +1586,8 @@ struct HadronPhotonCorrelation {
   void processRecoPhotonPcmPair(soa::Filtered<aod::HpcCollisions> const& collisions, aod::HpcTriggers const& triggers, soa::Filtered<PhotonPcmPairsWithV0> const& photonPcmPairs,
                                 aod::V0PhotonsKF const&, aod::V0Legs const&)
   {
-    fillProcessRecoMain<AssocType::PhotonPcmPair, false>(collisions, triggers, photonPcmPairs);
+    fillProcessRecoMain<AssocType::PhotonPcmPair, false>(collisions, triggers, photonPcmPairs,
+                                                         [this](auto const& associated) { return fillConditionRecoPhotonPcmPairMix(associated); });
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processRecoPhotonPcmPair, "process standard for associated photonPcmPair", false);
 
@@ -1626,7 +1646,7 @@ struct HadronPhotonCorrelation {
 
   // mc true++ ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  bool fillMcTrueBasicCondition(auto const& assocParticle)
+  bool fillConditionMcTrueBasic(auto const& assocParticle)
   {
     if (std::abs(assocParticle.eta()) > config.absEtaMax.value) {
       return false;
@@ -1851,7 +1871,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevelV>(histFillInfo, assocParticle);
       };
       corrProcessMixing<TruthLevelV>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                     [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
+                                     [this](auto const& assocParticle) { return fillConditionMcTrueBasic(assocParticle); });
     }
   }
 
@@ -1936,7 +1956,7 @@ struct HadronPhotonCorrelation {
         fillAssocsMcTrue<HistFillMode::Mixing, TruthLevel::TrueRecoEvRecoPtTrig>(histFillInfo, assocParticle, []() { return false; });
       };
       corrProcessMixing<TruthLevel::TrueRecoEvRecoPtTrig>(mcCollision, mcParticlesThisEvent, funcMixing, config.nMixingAt0McTrue.value,
-                                                          [this](auto const& assocParticle) { return fillMcTrueBasicCondition(assocParticle); });
+                                                          [this](auto const& assocParticle) { return fillConditionMcTrueBasic(assocParticle); });
     }
   }
   PROCESS_SWITCH(HadronPhotonCorrelation, processMcTrueRecoEvRecoPtTrig, "process mc-true (reco collisions with reco ptTrig) correlation for multiple associated particles", false);

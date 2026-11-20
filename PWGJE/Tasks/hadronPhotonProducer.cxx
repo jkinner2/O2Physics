@@ -90,7 +90,7 @@ struct HadronPhotonProducer {
   } tableProduction;
 
   Configurable<double> zPvMax{"zPvMax", 7, "maximum absZ primary-vertex cut"};
-  Configurable<int> occupancyMin{"occupancyMin", 0, "minimum occupancy cut"};
+  Configurable<int> occupancyMin{"occupancyMin", -1, "minimum occupancy cut"};
   Configurable<int> occupancyMax{"occupancyMax", 2000, "maximum occupancy cut"};
 
   Configurable<std::string> eventSelections{"eventSelections", "sel8", "JE framework - event selection"};
@@ -179,12 +179,9 @@ struct HadronPhotonProducer {
 
   // reco only --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  // event selection
+  // event selection (without trigger skimming)
   bool checkEventSelection(auto const& collision)
   {
-    if (!jetderiveddatautilities::selectTrigger(collision, triggerMaskBits)) {
-      return false;
-    }
     if (!jetderiveddatautilities::selectCollision(collision, eventSelectionBits, skipMBGapEvents, applyRctSelection, rctLabel)) {
       return false;
     }
@@ -551,6 +548,10 @@ struct HadronPhotonProducer {
     trackToTriggerMap.clear();
 
     for (auto const& collision : collisions) {
+      // skip non-triggered events
+      if (!jetderiveddatautilities::selectTrigger(collision, triggerMaskBits)) {
+        continue;
+      }
       // event selection
       bool const isSelectedEvent = checkEventSelection(collision);
 
@@ -642,6 +643,10 @@ struct HadronPhotonProducer {
   void fillProcessRecoHadronPipm(auto const& collisions, auto const& tracks)
   {
     for (auto const& collision : collisions) {
+      // skip non-triggered events
+      if (!jetderiveddatautilities::selectTrigger(collision, triggerMaskBits)) {
+        continue;
+      }
       // event selection
       if (!checkEventSelection(collision)) {
         continue;
@@ -742,6 +747,10 @@ struct HadronPhotonProducer {
   void fillProcessRecoPhotonPcm(auto const& collisions, auto const& v0Photons, auto const& tracks)
   {
     for (auto const& collision : collisions) {
+      // skip non-triggered events
+      if (!jetderiveddatautilities::selectTrigger(collision, triggerMaskBits)) {
+        continue;
+      }
       // event selection
       if (!checkEventSelection(collision)) {
         continue;
