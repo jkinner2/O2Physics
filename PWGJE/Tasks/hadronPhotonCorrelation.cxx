@@ -1537,7 +1537,8 @@ struct HadronPhotonCorrelation {
 
   // photonPcmPair reco :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  bool fillConditionRecoPhotonPcmPairMix(auto const& associated) {
+  bool fillConditionRecoPhotonPcmPairMix(auto const& associated)
+  {
     // pi0
     if (isInMassRange<AssocType::Pi0PcmPeak>(associated.mgg()) || isInMassRange<AssocType::Pi0PcmSide>(associated.mgg())) {
       return true;

@@ -131,7 +131,7 @@ struct HadronPhotonProducer {
     double ptTrueOrigin = -1;
   };
 
-  // map jetTracks to produced triggers
+  // map ids
   std::map<int32_t, int32_t> jetToHpcCollisionMap;
   std::map<int32_t, int32_t> trackToTriggerMap;
 
@@ -871,7 +871,6 @@ struct HadronPhotonProducer {
       int const nSelectSplitMcEv = getThirdFourthDecimalTruePosZ(mcCollision) % nTimesSplitMcEv.value + 1;
       // maximum charged particle pt
       float maxChargedPt = -1;
-      int maxTriggerCollisionId = -1;
       int maxTriggerGlobalIndex = -1;
       float maxTriggerPhi = 0;
       float maxTriggerEta = 0;
@@ -895,7 +894,6 @@ struct HadronPhotonProducer {
         nCharged++;
         if (mcParticle.pt() > maxChargedPt) {
           maxChargedPt = mcParticle.pt();
-          maxTriggerCollisionId = mcParticle.mcCollisionId();
           maxTriggerGlobalIndex = mcParticle.globalIndex();
           maxTriggerPhi = mcParticle.phi();
           maxTriggerEta = mcParticle.eta();
@@ -911,13 +909,13 @@ struct HadronPhotonProducer {
 
         // trigger info
         histos.fill(HIST("true/h3_ptPhiEta_trigger"), mcParticle.pt(), mcParticle.phi(), mcParticle.eta());
-        tableProduction.trueTrigger(mcParticle.mcCollisionId(), mcParticle.globalIndex(),
+        tableProduction.trueTrigger(mcCollision.globalIndex(), mcParticle.globalIndex(),
                                     mcParticle.pt(), mcParticle.phi(), mcParticle.eta());
       }
       bool const isTriggerEvent = maxChargedPt > ptTrigMin;
       if (oneTriggerPerEvent && isTriggerEvent) {
         histos.fill(HIST("true/h3_ptPhiEta_trigger"), maxChargedPt, maxTriggerPhi, maxTriggerEta);
-        tableProduction.trueTrigger(maxTriggerCollisionId, maxTriggerGlobalIndex,
+        tableProduction.trueTrigger(mcCollision.globalIndex(), maxTriggerGlobalIndex,
                                     maxChargedPt, maxTriggerPhi, maxTriggerEta);
       }
 
